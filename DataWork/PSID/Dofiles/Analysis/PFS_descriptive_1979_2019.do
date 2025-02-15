@@ -1080,8 +1080,13 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				est	store	PFS_cutoff_SNAPrate				
 				
 				*	Multivariate regressions
-				reg	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_rp_nonWhite_Census	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	income and non-White population
-				est	store	PFS_cutoff_inc_nonWhite
+					
+					*	Income and non-White
+					reg	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_rp_nonWhite_Census	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	income and non-White population
+					est	store	PFS_cutoff_inc_nonWhite
+					
+					*	Income, GDP growth, poverty rate
+					reg	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_rp_nonWhite_Census	GDP_pc_growth	pov_rate_national	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	Poverty rate
 				
 				*	Full regression, without unemlpoyment rate ((2024-08 version, This is the model I use to construct pre-1995 threshold, after discussing with Chris)
 				cap	drop	PFS_cutoff_full_hat
@@ -2424,18 +2429,18 @@ graph twoway (connected  TFP_monthly_cost year)
 			
 			
 			*	(2025-2-15) Figure plotting PFS-based FI and other national statistics
-				
+			replace	GDP_growth_real	=	GDP_growth_real/100
 			
-			twoway	(bar	upper year if inrange(year, 1988, 1991), bcolor(gs14) barwidth(2)	graphregion(fcolor(white)))	///
+			twoway	/*(bar	upper year if inrange(year, 1988, 1991), bcolor(gs14) barwidth(2)	graphregion(fcolor(white)))*/	///
 					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1979,1987),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
 					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1992,2019),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
 					(line frac_SNAP_person		year if inrange(year,1979,2019), 	lc(red)	 lp(shortdash) lwidth(medium)	graphregion(fcolor(white)))	 ///
 					(line pov_rate_national		year if inrange(year,1979,2019),	lc(black) lp(dash) lwidth(medium)  graphregion(fcolor(white)))	 ///
-					(line unemp_rate		year if inrange(year,1979,2019), 	lc(black)	 lp(dot) lwidth(medium)	graphregion(fcolor(white))),	///
-					legend(order(2 "Food insecure (PFS-based)" 4 "SNAP participation rate" 5 "National Poverty Rate"  6 "Unemployment" )	///
+					(line GDP_growth_real		year if inrange(year,1979,2019), 	lc(black)	 lp(dot) lwidth(medium)	graphregion(fcolor(white))),	///
+					legend(order(1 "Food insecure (PFS-based)" 3 "SNAP participation " 4 "Poverty" 5 "GDP Growth" )	///
 					row(2) size(small) keygap(0.1) symxsize(5) pos(6)) /*yscale(range(0 0.2) titlegap(1)) ylabel(0(0.025)0.2)*/ ///
 					note("Note: PFS is missing from 1988 to 1991 due to missing data in PSID")	///
-					title("Estimated Food Insecurity, SNAP Participation and Poverty (%)") ytitle("Fraction") xtitle("Year") name(PFS_SNAP_povrate, replace)	
+					title("Estimated Food Insecurity, SNAP Participation," "Poverty and GDP Growth Rates") ytitle("Fraction") xtitle("Year") name(PFS_SNAP_povrate, replace)	
 			
 			graph 	display PFS_SNAP_povrate, ysize(8) xsize(12.0)
 			
