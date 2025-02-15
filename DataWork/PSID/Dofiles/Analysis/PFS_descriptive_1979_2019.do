@@ -323,6 +323,17 @@ Thank you for giving us the opportunity to consider your work and I look forward
 			*	Save
 			save	"${SNAP_dtInt}/Gini_index", replace
 				
+		*	Real personal consumer expenditure (PCE)
+			*	Source: FRED (https://fred.stlouisfed.org/series/DPCERL1A225NBEA)
+			import delimited "${clouldfolder}\DataWork\FRED\DPCERL1A225NBEA.csv", clear 
+			gen	year=	substr(observation_date,1,4)
+			destring	year,	replace
+			rename	dpcerl1a225nbea	PCE_real_change
+			lab	var	PCE_real_change	"Change in Real Personal Consumption Expenditure (PCE)"
+			keep	year	PCE_real_change
+			
+			*	Save
+			save	"${SNAP_dtInt}/PCE_real_change", replace
 		
 		*	CPI and TFP cost
 		use		"${SNAP_dtInt}/TFP cost/TFP_costs_all", clear
@@ -956,7 +967,7 @@ Thank you for giving us the opportunity to consider your work and I look forward
 		merge	m:1	year	using	"${SNAP_dtInt}/dis_per_inc_pc", nogen assert(2 3) keep(3)	//	Disposable income
 		merge	m:1	year	using	"${SNAP_dtInt}/Gini_index", nogen assert(2 3) keep(3)	//	Gini index
 		merge	m:1	year	using	"${SNAP_dtInt}/social_spending", nogen keep(1 3) //	Social spending
-		
+		merge	m:1	year	using	"${SNAP_dtInt}/PCE_real_change", nogen keep(1 3) //	Change in real PCE
 	
 	
 		*	Fraction of population in SNAP
@@ -1052,7 +1063,21 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				predict	PFS_cutoff_pov_e, resid
 				gen		PFS_cutoff_pov_e2	=	(PFS_cutoff_pov_e)^2
 				est	store	PFS_cutoff_povrate
-								
+				
+				*	(2025-2-15) SNAP participation rate 
+				cap	drop	PFS_cutoff_SNAP_hat
+				cap	drop	PFS_cutoff_SNAP_e
+				cap	drop	PFS_cutoff_SNAP_e2
+				
+				
+				cap	drop	frac_SNAP_person_rescale
+				gen	frac_SNAP_person_rescale	=	frac_SNAP_person*100
+				lab	var	frac_SNAP_person_rescale	"SNAP Participation Rate (0-100%)"
+				reg	PFS_threshold_ppml_noCOLI frac_SNAP_person_rescale	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	Poverty rate
+				predict	PFS_cutoff_SNAP_hat
+				predict	PFS_cutoff_SNAP_e, resid
+				gen		PFS_cutoff_SNAP_e2	=	(PFS_cutoff_SNAP_e)^2
+				est	store	PFS_cutoff_SNAPrate				
 				
 				*	Multivariate regressions
 				reg	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_rp_nonWhite_Census	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	income and non-White population
@@ -1069,9 +1094,20 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				gen		PFS_cutoff_full_e2	=	(PFS_cutoff_full_e)^2
 				est	store	PFS_cutoff_full
 				
+					*	(2025-2-15) Replacing poverty rate with SNAP rate
+					cap	drop	PFS_cutoff_full2_hat
+					cap	drop	PFS_cutoff_full2_e
+					cap	drop	PFS_cutoff_full2_e2
+				
+					reg	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_rp_nonWhite_Census	GDP_pc_growth	frac_SNAP_person_rescale	if	!mi(PFS_threshold_ppml_noCOLI), robust
+					predict	PFS_cutoff_full2_hat
+					predict	PFS_cutoff_full2_e, resid
+					gen		PFS_cutoff_full2_e2	=	(PFS_cutoff_full2_e)^2
+					est	store	PFS_cutoff_full2
+				
 				
 				*	Using "esttab"
-				esttab	PFS_cutoff_income	PFS_cutoff_nonWhite	PFS_cutoff_GDPgrowth		PFS_cutoff_povrate	PFS_cutoff_inc_nonWhite	PFS_cutoff_full	using "${SNAP_outRaw}/PFS_cutoff_on_X.csv", ///
+				esttab	PFS_cutoff_income	PFS_cutoff_nonWhite	PFS_cutoff_GDPgrowth		PFS_cutoff_povrate	PFS_cutoff_SNAPrate	PFS_cutoff_inc_nonWhite	PFS_cutoff_full	PFS_cutoff_full2	using "${SNAP_outRaw}/PFS_cutoff_on_X.csv", ///
 							cells(b(star fmt(%8.3f)) & se(fmt(2) par)) stats(N r2, fmt(0 2)) incelldelimiter() label legend nobaselevels /*nostar*/ star(* 0.10 ** 0.05 *** 0.01)	/*drop(rp_state_enum*)*/	///
 							title(PFS cutoff on economic indicators)		replace	
 				
@@ -1263,7 +1299,7 @@ Thank you for giving us the opportunity to consider your work and I look forward
 										title(PFS Thresholds and Key indicators)	bgcolor(white)	graphregion(color(white)) /*note(Source: USDA & BLS)*/	name(PFScutoff_inc_foodexp, replace)
 					restore		
 					
-					*	NME, Food exp and TFP cost (real)
+					*	C2: NME, Food exp and TFP cost (real)
 					preserve
 						*keep	if	inrange(year,1995,2019)
 						graph	twoway	(connected NME 		year, lpattern(dash) symbol(diamond) xaxis(1 2) yaxis(1) legend(label(1 "NME"))) 	///
@@ -1925,23 +1961,8 @@ graph twoway (connected  TFP_monthly_cost year)
 			graph	export	"${SNAP_outRaw}/gender_race_annual.png", as(png) replace
 			graph	close
 			
-			
-			
-			*	(2024-1-5) We no longer use this graph, so disable it.
-			/*
-			*	SNAP participation rate and poverty rate
-			graph	twoway	(line FS_rec_wth	 	year, lpattern(dash) xaxis(1) yaxis(1) legend(label(1 "SNAP - Sample")))	///
-							(line frac_SNAP_person	year, lpattern(dash_dot) xaxis(1) yaxis(1) legend(label(2 "SNAP - Census and USDA")))	///
-							(line pov_rate_national	year, lpattern(dot) xaxis(1 2) yaxis(1)  legend(label(3 "Poverty Rate"))),  ///
-							xline(1987 1992 /*2007*/, axis(1) lcolor(black) lpattern(dash))	///
-							xline(1989 1990, lwidth(20) lc(gs12)) xlabel(1980(10)2010 2019)  ///
-							xtitle(Year)	/*xtitle("", axis(1))*/	ytitle("Percent", axis(1)) ///
-							ytitle("Age", axis(1)) title(SNAP Participation and Poverty Rate)	bgcolor(white)	graphregion(color(white)) 	name(snap_annual, replace)	///
-							note("Source: US Census and USDA." "SNAP - Census and USDA is imputed by dividing the population estimates (Census) by the population in SNAP (USDA)")
-			graph display snap_annual, ysize(4) xsize(9.0)
-			graph	export	"${SNAP_outRaw}/SNAP_rate_sample_Census_USDA.png", replace	
-			graph	close
-			*/
+
+	
 			
 			*	Figure A1: Food expenditure per capita (including stamp benefit), TFP cost (real)
 			graph	twoway	(line foodexp_tot_inclFS_pc_real	year, lpattern(dash) xaxis(1 2) yaxis(1)  legend(label(1 "Food exp")))  ///
@@ -2337,6 +2358,7 @@ graph twoway (connected  TFP_monthly_cost year)
 		restore
 			
 		
+	
 		*	Figure 3: Compute FI trend b/w PFS and FSSS
 		preserve
 				
@@ -2349,6 +2371,13 @@ graph twoway (connected  TFP_monthly_cost year)
 			 replace	year=1990 in 29
 			 replace	year=1991 in 30
 			 
+
+			 
+			 *	(2025-2-15) Import SNAP participation rate and poverty rate from Census data
+			 merge	1:1	year	using	"${SNAP_dtInt}/SNAP_1979_2019_census_annual"
+			 replace	pov_rate_national	=	pov_rate_national/100
+			 replace	unemp_rate	=	unemp_rate/100
+			 
 			 sort	year
 			 
 			 cap	drop	upper
@@ -2358,8 +2387,8 @@ graph twoway (connected  TFP_monthly_cost year)
 			*	(2024-12-9)	Somehow collapsed var has precision issue. Make a double-version of the same variable for plotting
 			gen	double	PFS_FI_ppml_noCOLI_db	=	PFS_FI_ppml_noCOLI
 			lab	var	PFS_FI_ppml_noCOLI_db	"Estimated to be food insecure"
-		
-		
+			
+			*	Figure 3	
 			twoway	(bar	upper year if inrange(year, 1988, 1991), bcolor(gs14) barwidth(2)	graphregion(fcolor(white)))	///
 					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1979,1987),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
 					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1992,2019),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
@@ -2374,6 +2403,44 @@ graph twoway (connected  TFP_monthly_cost year)
 			
 			graph	export	"${SNAP_outRaw}/PFS_FI_rate_PFS_FSSS.png", as(png) replace
 			graph	close	
+			
+			
+			
+			/*
+			*	SNAP participation rate and poverty rate
+			graph	twoway	(line FS_rec_wth	 	year, lpattern(dash) xaxis(1) yaxis(1) legend(label(1 "SNAP - Sample")))	///
+							(line frac_SNAP_person	year, lpattern(dash_dot) xaxis(1) yaxis(1) legend(label(2 "SNAP - Census and USDA")))	///
+							(line pov_rate_national	year, lpattern(dot) xaxis(1 2) yaxis(1)  legend(label(3 "Poverty Rate"))),  ///
+							xline(1987 1992 /*2007*/, axis(1) lcolor(black) lpattern(dash))	///
+							xline(1989 1990, lwidth(20) lc(gs12)) xlabel(1980(10)2010 2019)  ///
+							xtitle(Year)	/*xtitle("", axis(1))*/	ytitle("Percent", axis(1)) ///
+							ytitle("Age", axis(1)) title(SNAP Participation and Poverty Rate)	bgcolor(white)	graphregion(color(white)) 	name(snap_annual, replace)	///
+							note("Source: US Census and USDA." "SNAP - Census and USDA is imputed by dividing the population estimates (Census) by the population in SNAP (USDA)")
+			graph display snap_annual, ysize(4) xsize(9.0)
+			graph	export	"${SNAP_outRaw}/SNAP_rate_sample_Census_USDA.png", replace	
+			graph	close
+			*/
+			
+			
+			
+			*	(2025-2-15) Figure plotting PFS-based FI and other national statistics
+				
+			
+			twoway	(bar	upper year if inrange(year, 1988, 1991), bcolor(gs14) barwidth(2)	graphregion(fcolor(white)))	///
+					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1979,1987),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
+					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1992,2019),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
+					(line frac_SNAP_person		year if inrange(year,1979,2019), 	lc(red)	 lp(shortdash) lwidth(medium)	graphregion(fcolor(white)))	 ///
+					(line pov_rate_national		year if inrange(year,1979,2019),	lc(black) lp(dash) lwidth(medium)  graphregion(fcolor(white)))	 ///
+					(line unemp_rate		year if inrange(year,1979,2019), 	lc(black)	 lp(dot) lwidth(medium)	graphregion(fcolor(white))),	///
+					legend(order(2 "Food insecure (PFS-based)" 4 "SNAP participation rate" 5 "National Poverty Rate"  6 "Unemployment" )	///
+					row(2) size(small) keygap(0.1) symxsize(5) pos(6)) /*yscale(range(0 0.2) titlegap(1)) ylabel(0(0.025)0.2)*/ ///
+					note("Note: PFS is missing from 1988 to 1991 due to missing data in PSID")	///
+					title("Estimated Food Insecurity, SNAP Participation and Poverty (%)") ytitle("Fraction") xtitle("Year") name(PFS_SNAP_povrate, replace)	
+			
+			graph 	display PFS_SNAP_povrate, ysize(8) xsize(12.0)
+			
+			graph	export	"${SNAP_outRaw}/PFS_FI_SNAP_pov.png", as(png) replace
+			
 		restore
 		
 		
