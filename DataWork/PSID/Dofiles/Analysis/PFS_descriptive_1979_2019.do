@@ -2556,7 +2556,63 @@ graph twoway (connected  TFP_monthly_cost year)
 	
 			*	Table 4
 			*	Summary stats based on FS status
-			loc	summvars	rp_female	rp_age	rp_nonWhte	rp_married	rp_disabled	rp_col		///
+			
+				*	(2025-2-16) Panel (a) matching status by category (Responding 4th R&R  comments)
+		
+			
+				*	Table B4
+				tabstat	PFS_FS_FSSS_FS_cps	PFS_FI_FSSS_FI_cps	PFS_FI_FSSS_FS_cps	PFS_FS_FSSS_FI_cps	[aw=wgt_long_ind] if inlist(year,1999,2001,2003,2015,2017,2019),	///
+				statistics(/*count*/	mean		/*sd	min	 median	p95 max*/	) columns(statistics)  by(year)	save	// save
+			
+				mat	matching_PFS_FSSS_cps	=	r(Stat1)	\	r(Stat2)	\	r(Stat3)	\	r(Stat4)	\	r(Stat5)	\	r(Stat6)	\	r(StatTotal)
+				mat	matching_PFS_FSSS_cps	=	matching_PFS_FSSS_cps'	
+				
+				mat	rownames	matching_PFS_FSSS_cps	=	"FS(PFS) and FS(FSSS)"	"FI(PFS) and FI(FSSS)"	"FI(PFS) and FS(FSSS)"	"FS(PFS) and FI(FSSS)"
+				mat	colnames	matching_PFS_FSSS_cps	=	"1999"	"2001"	"2003"	"2015"	"2017"	"2019"	"Total"
+				mat	list	matching_PFS_FSSS_cps
+				
+					*	Export
+				putexcel	set "${SNAP_outRaw}/PFS_FSSS_FI_by_year.xlsx", sheet(TabB4_PFS_FSSS_match) modify
+				putexcel	A5	=	matrix(matching_PFS_FSSS_cps), names overwritefmt nformat(number_d2)	
+
+			
+			
+			
+			*	Mismatch probability
+				
+				loc	summvars	PFS_FS_FSSS_FS  PFS_FS_FSSS_FI  PFS_FI_FSSS_FS  PFS_FI_FSSS_FI 
+				tabstat	`summvars' [aweight = wgt_long_ind] ,	statistics(mean	/* sd	min	  max	sd	min	 median	p95 max*/	) columns(variables)  save
+				
+				cap	mat	drop	matching_PFS_FSSS
+				mat	matching_PFS_FSSS	=	 r(StatTotal)
+				mat list matching_PFS_FSSS
+
+				*	By category
+				loc conditions rp_female==0 rp_female==1	rp_nonWhte==0	rp_nonWhte==1	rp_married==1	rp_married==0	rp_disabled==0	rp_disabled==1	rp_NoHS==1	rp_col==1
+				foreach	cond of loc conditions {
+					
+					//cap	mat	drop	matching_PFS_FSSS_temp
+					
+					tabstat	`summvars' [aweight = wgt_long_ind] if `cond',	statistics(mean	/* sd	min	  max	sd	min	 median	p95 max*/	) columns(variables)   save
+					
+					//mat	matching_PFS_FSSS_temp	=	e(PFS_FS_FSSS_FS), e(PFS_FS_FSSS_FI), e(PFS_FI_FSSS_FS), e(PFS_FI_FSSS_FI) 
+					mat	matching_PFS_FSSS	=	matching_PFS_FSSS	\	r(StatTotal)
+					
+				}
+				
+				mat	rownames	matching_PFS_FSSS	=	"Total" "Male"	"Female" "White" "Non-White" "Not married" "Married" "Not disabled" "Disabled" "Less than high school" "College"
+				mat	colnames	matching_PFS_FSSS	=	"FS(PFS) and FS(FSSS)"	"FS(PFS) and FI(FSSS)"	"FI(PFS) and FS(FSSS)"	"FI(PFS) and FI(FSSS)"
+				mat list matching_PFS_FSSS
+				
+					*	Export
+				
+				putexcel	set "${SNAP_outRaw}/PFS_FSSS_by_characters.xlsx", sheet(Tab4_panela_PFS_FSSS_match) replace
+				putexcel	A5	=	matrix(matching_PFS_FSSS), names overwritefmt nformat(number_d2)	
+			
+			
+				*	Panel (b)
+				
+				loc	summvars	rp_female	rp_age	rp_nonWhte	rp_married	rp_disabled	rp_NoHS		///
 							famnum	ln_fam_income_pc_real	foodexp_tot_inclFS_pc_1_real	PFS_ppml_noCOLI HFSM_raw	
 			
 				*	Full sample
@@ -2586,11 +2642,11 @@ graph twoway (connected  TFP_monthly_cost year)
 				
 				
 			
-			esttab	/*PFS_FSSS_full*/	PFS_FS_FSSS_FS	PFS_FS_FSSS_FI	PFS_FI_FSSS_FS	/*PFS_FI_FSSS_FI*/	using	"${SNAP_outRaw}/summstat_by_status.csv",  ///
+			esttab	/*PFS_FSSS_full*/	PFS_FS_FSSS_FS	PFS_FS_FSSS_FI	PFS_FI_FSSS_FS	PFS_FI_FSSS_FI	using	"${SNAP_outRaw}/summstat_by_status.csv",  ///
 				cells("mean(fmt(%12.2f)) sd(fmt(%12.2f))") label	title("Summary Statistics - FS(PFS) and FI(FSSS)") noobs 	  replace
 		
 		
-			*	dtable version
+			*	dtable version (panel b only)
 			lab	var	foodexp_tot_inclFS_pc_1_real	"Food expenditure per capita (including SNAP benefit)"
 			lab	define	rp_edu_cat	4	"Has college degree (RP)", modify
 			lab	var	HFSM_raw	"FSSS (raw score)"
@@ -2626,7 +2682,7 @@ graph twoway (connected  TFP_monthly_cost year)
 		
 			collect label levels cmdset 1 "Summary"
 			collect style header result, level(hide)	
-			collect layout (var[_N]#result rp_female[1]#result var[rp_age]#result rp_nonWhte[1]#result rp_married[1]#result rp_disabled[1]#result rp_edu_cat[4]#result	///
+			collect layout (var[_N]#result rp_female[1]#result var[rp_age]#result rp_nonWhte[1]#result rp_married[1]#result rp_disabled[1]#result rp_edu_cat[1]#result	///
 					var[famnum]#result	var[ln_fam_income_pc_real]#result	var[foodexp_tot_inclFS_pc_1_real]#result	var[PFS_ppml_noCOLI]#result	var[HFSM_raw]#result) (collection) (cmdset)
 			
 			
@@ -2634,7 +2690,10 @@ graph twoway (connected  TFP_monthly_cost year)
 			
 		
 			
-			
+	
+
+
+	
 	
 			
 			
@@ -2803,9 +2862,9 @@ graph twoway (connected  TFP_monthly_cost year)
 					
 				
 			
-	/****************************************************************
+	/***************************************************************
 		SECTION 4: Dynamics analyses
-	****************************************************************/		 
+	***************************************************************/		 
 					
 		
 		use	"${SNAP_dtInt}/SNAP_descdta_1979_2019", clear
