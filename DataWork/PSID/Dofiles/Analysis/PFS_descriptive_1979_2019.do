@@ -1155,6 +1155,43 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				gen		PFS_cutoff_full_e2	=	(PFS_cutoff_full_e)^2
 				est	store	PFS_cutoff_full
 				
+				
+				*	(2025-3-1) Using Poverty and SNAP only
+				loc	name	povsnap
+				cap	drop	PFS_cutoff_`name'_hat
+				cap	drop	PFS_cutoff_`name'_e
+				cap	drop	PFS_cutoff_`name'_e2
+			
+				reg	PFS_threshold_ppml_noCOLI 	pov_rate_national	pct_SNAP_person	if	!mi(PFS_threshold_ppml_noCOLI), robust
+				predict	PFS_cutoff_`name'_hat
+				predict	PFS_cutoff_`name'_e, resid
+				gen		PFS_cutoff_`name'_e2	=	(PFS_cutoff_`name'_e)^2
+				est	store	PFS_cutoff_`name'
+				
+				*	(2025-3-1) Using Poverty and Bottome 20% income only	
+				loc	name	povlowinc
+				cap	drop	PFS_cutoff_`name'_hat
+				cap	drop	PFS_cutoff_`name'_e
+				cap	drop	PFS_cutoff_`name'_e2
+			
+				reg	PFS_threshold_ppml_noCOLI 	pov_rate_national	change_inc_mean_lowestfifth	if	!mi(PFS_threshold_ppml_noCOLI), robust
+				predict	PFS_cutoff_`name'_hat
+				predict	PFS_cutoff_`name'_e, resid
+				gen		PFS_cutoff_`name'_e2	=	(PFS_cutoff_`name'_e)^2
+				est	store	PFS_cutoff_`name'
+				
+				*	(2025-3-1)	Using SNAP and low income only
+				loc	name	snaplowinc
+				cap	drop	PFS_cutoff_`name'_hat
+				cap	drop	PFS_cutoff_`name'_e
+				cap	drop	PFS_cutoff_`name'_e2
+			
+				reg	PFS_threshold_ppml_noCOLI 	pct_SNAP_person	change_inc_mean_lowestfifth	if	!mi(PFS_threshold_ppml_noCOLI), robust
+				predict	PFS_cutoff_`name'_hat
+				predict	PFS_cutoff_`name'_e, resid
+				gen		PFS_cutoff_`name'_e2	=	(PFS_cutoff_`name'_e)^2
+				est	store	PFS_cutoff_`name'
+				
 				*	(2025-2-22) Using poverty rate, SNAP rate and mean bottom 20 percentile income
 				cap	drop	PFS_cutoff_full2_hat
 				cap	drop	PFS_cutoff_full2_e
@@ -1182,8 +1219,8 @@ Thank you for giving us the opportunity to consider your work and I look forward
 							cells(b(star fmt(%8.3f)) & se(fmt(2) par)) stats(N r2, fmt(0 2)) incelldelimiter() label legend nobaselevels /*nostar*/ star(* 0.10 ** 0.05 *** 0.01)	/*drop(rp_state_enum*)*/	///
 							title(PFS cutoff on economic indicators)		replace	
 					
-					*	Poverty rate, SNAP participation rate, change in mean HH inome bottom 20 percentile
-					esttab	PFS_cutoff_povrate	PFS_cutoff_SNAPrate	PFS_cutoff_lowinc	PFS_cutoff_full2	using "${SNAP_outRaw}/PFS_cutoff_on_X2.csv", ///
+					*	Poverty rate, SNAP participation rate, change in mean HH inome bottom 20 percentile and their comps
+					esttab	PFS_cutoff_povrate	PFS_cutoff_SNAPrate	PFS_cutoff_lowinc	PFS_cutoff_povsnap		PFS_cutoff_povlowinc	PFS_cutoff_snaplowinc	PFS_cutoff_full2	using "${SNAP_outRaw}/PFS_cutoff_on_X2.csv", ///
 							cells(b(star fmt(%8.3f)) & se(fmt(2) par)) stats(N r2, fmt(0 2)) incelldelimiter() label legend nobaselevels /*nostar*/ star(* 0.10 ** 0.05 *** 0.01)	/*drop(rp_state_enum*)*/	///
 							title(PFS cutoff on economic indicators)		replace	
 			
@@ -1237,7 +1274,22 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				graph	export	"${SNAP_outRaw}/PFS_thresholds.png", replace	
 				graph	close	
 				
+				*	(2025-3-1)	Plotting new thresholds only
+				graph	twoway	///
+					(line PFS_threshold_ppml_noCOLI year, lpattern(solid) xaxis(1 2) yaxis(1) legend(label(1 "Realized")))	///
+					(line PFS_cutoff_SNAP_hat		year, lpattern(dash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(2 "Predicted (SNAP)")))	///
+					(line PFS_cutoff_lowinc_hat		year, lpattern(dash_dot) xaxis(1 2) yaxis(1)  legend(label(3 "Predicted  (Bottom 20% income)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
+					(line PFS_cutoff_full2_hat		year, lpattern(dot) lcolor(black) xaxis(1 2) yaxis(1)  legend(label(4 "Predicted  (new)") row(1) size(small) keygap(0.1) pos(6) symxsize(5))),	///
+								/*xline(1980 1993 1999 2007, axis(1) lpattern(dot))*/ xlabel(/*1980 "No payment" 1993 "xxx" 2009 "ARRA" 2020 "COVID"*/, axis(2))	///
+								xtitle(Year)	ytitle("Probability")	///
+								title(PFS Thresholds)	bgcolor(white)	graphregion(color(white)) /*note(Source: USDA & BLS)*/	name(PFS_cutoff, replace)
+							
+							
+												/*(line PFS_cutoff_income_hat		year, lpattern(dot) xaxis(1 2) yaxis(1) legend(label(2 "Predicted (disposable income)")))	///
+					(line PFS_cutoff_nonWhite_hat	year, lpattern(shortdash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(3 "Predicted (non-White)")))	/// */
 			
+				graph	export	"${SNAP_outRaw}/PFS_thresholds_new.png", replace	
+				graph	close	
 		
 		
 		*	Save year-level data
@@ -1431,7 +1483,7 @@ Thank you for giving us the opportunity to consider your work and I look forward
 									xtitle(Year)	xtitle("", axis(2))	ytitle("Food expenditure, TFP cost and NME", axis(1)) 	ytitle("Ratio", axis(1)) 	ytitle("Dollars", axis(2))	///
 									title(Food expenditure/TFP cost/NME)	bgcolor(white)	graphregion(color(white)) /*note(Source: USDA & BLS)*/	name(PFScutoff_inc_foodexp, replace)
 					graph	export	"${SNAP_outRaw}/foodexp_TFP_NME.png", replace	
-					restore		
+					
 					
 		
 			cap	drop	NME_real
@@ -1562,7 +1614,7 @@ graph twoway (connected  TFP_monthly_cost year)
 		
 		*	Load previously saved data and import pre-1995 cutoff
 		use	`SNAP_long_PFS_before_cutoff', clear
-		merge	m:1	year using	"${SNAP_dtInt}/SNAP_1979_2019_census_annual", keepusing(PFS_cutoff_full_hat	 PFS_cutoff_full2_hat) assert(2 3) keep(3) nogen
+		merge	m:1	year using	"${SNAP_dtInt}/SNAP_1979_2019_census_annual", keepusing(/*PFS_cutoff_full_hat	 PFS_cutoff_full2_hat*/	PFS_cutoff_*_hat) assert(2 3) keep(3) nogen
 		
 			*	Construct a cut-off variable covering full study period
 			loc	var	PFS_threshold_7919
@@ -1571,8 +1623,8 @@ graph twoway (connected  TFP_monthly_cost year)
 			replace	`var'	=	PFS_threshold_ppml_noCOLI	if	inrange(year,1995,2019)	//	Realized cut-off using USDA FI prevalence rate
 				
 				*	(2025-2-22) Use new cut-off
-				replace	`var'	=	PFS_cutoff_full2_hat			if	inrange(year,1979,1994)	//	Predicted cut-off from macroindicators
-			lab	var	`var'	"PFS FI threshold (1979-2019)"
+				replace	`var'	=	PFS_cutoff_SNAP_hat 			if	inrange(year,1979,1994)	//	Predicted cut-off from macroindicators
+				lab	var	`var'	"PFS FI threshold (1979-2019)"
 		
 		
 		
@@ -2223,7 +2275,7 @@ graph twoway (connected  TFP_monthly_cost year)
 				summ	PFS_FI_ppml_noCOLI	[aw=wgt_long_ind]	//	12% average FI prevalence.
 				
 				*	Figure 2
-				lgraph PFS_ppml_noCOLI year [aw=wgt_long_ind], errortype(iqr) separate(0.01) title(PFS (1979-2019)) note(25th and 75th percentile) bgcolor(white)	///
+				lgraph PFS_ppml_noCOLI year [aw=wgt_long_ind], errortype(iqr) separate(0.01) title(PFS (1979-2019)) note(Interquantile) bgcolor(white)	///
 					graphregion(color(white)) /*note(Source: USDA & BLS)*/	 yscale(range(0.5 1) titlegap(1)) 	ylabel(0.5(0.1)1) 	name(PFS_annual, replace) ytitle(Average)
 					
 				graph 	display PFS_annual, ysize(8) xsize(12.0)
@@ -2231,8 +2283,19 @@ graph twoway (connected  TFP_monthly_cost year)
 				graph	close
 				
 			
-				
-			
+					*	(2025-5-10) Figure 2A - PFS plotting 5-10-15-20 percentil
+					preserve
+						collapse	(mean)	mean_PFS=PFS_ppml_noCOLI	(p5) 	p5_PFS=PFS_ppml_noCOLI	(p10)	p10_PFS=PFS_ppml_noCOLI	///
+									(p15)	p15_PFS=PFS_ppml_noCOLI		(p20)	p20_PFS=PFS_ppml_noCOLI [aw=wgt_long_ind], by(year)
+									
+						graph	twoway	(connected	mean_PFS year)	/*(rcapsym p20_PFS p5_PFS  year) 	(rcapsym p15_PFS p10_PFS year)*/ (area p20_PFS p15_PFS p10_PFS p5_PFS  year), bgcolor(white) graphregion(color(white))	///
+						legend(lab (1 "Mean") lab(2 "20 percentile") lab(3 "15 percentile")  lab(4 "10 percentile")  lab(5 "5 percentile") rows(1) pos(6))	///
+						title(Trends and Distribution in PFS - 1979 to 2019)	name(PFS_annual_qtile, replace)	 ytitle(Probability)
+						graph 	display PFS_annual_qtile, ysize(8) xsize(12.0)	
+						
+						graph	export	"${SNAP_outRaw}/PFS_annual_qtile.png", replace
+						graph	close
+					restore
 			*	PFS and NME
 			/*
 			{	
