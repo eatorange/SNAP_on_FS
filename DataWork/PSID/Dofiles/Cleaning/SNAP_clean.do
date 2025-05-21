@@ -2846,10 +2846,11 @@
 						
 			*	Now we can determine baseline individuals who represent same baseline family over time.
 			*	Baseline individuals; (1) RP/SP in 1977, and (2) RP or SP at least once.
+				*	(2025-5-16) (2) is automatically satisfied if (1) is satisfied.
 			loc	var	baseline_indiv
 			cap	drop	`var'
 			gen		`var'=0
-			replace	`var'=1	if	rpsp1977==1	&	rpsponce7719==1
+			replace	`var'=1	if	rpsp1977==1	// &	rpsponce7719==1
 			label	var	`var'	"=1 if baseline individual"
 			
 			tab	baseline_indiv	//	8,756 individuals
