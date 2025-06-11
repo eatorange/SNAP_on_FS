@@ -3118,6 +3118,11 @@ graph twoway (connected  TFP_monthly_cost year)
 		*	I do NOT use individual-information for two reasons; (i) individual-level race not available. (ii) individual-education not available for indivdiual 16-years or less
 		*	(2024-9-22) I disabled rp_col, as there is no observations of college degree holder with _seq==23. Disabling doesn't matter our final analysis as we don't use this figure anyway.
 		
+		*	(2025-6-10)  After fixing the code to drop individual FE, some subpopulaitons have zero frequnecies in certain spell lengths, making the previous codes un-executable.
+		*	For now I will disable those codes, as we don't use those sub-catgory spell lengths. But if I need to include them, need to modify the codes below to include zero frequencies
+		
+		/*
+		
 		foreach	catvar	in	rp_female rp_White /*rp_col*/	{
 			
 			di	"catvar is `catvar'"
@@ -3132,13 +3137,14 @@ graph twoway (connected  TFP_monthly_cost year)
 				mat	spell_pct_`catvar'_`val'	=	spell_freq_`catvar'_`val'	/	r(N)	
 				mat	list	spell_pct_`catvar'_`val'
 				
+			
+				
 				mat	spell_pct_all		=	nullmat(spell_pct_all),	spell_pct_`catvar'_`val'
 			}
 			
 		}
-		
+	*/	
 	
-		
 	*preserve
 	
 	
@@ -3152,7 +3158,7 @@ graph twoway (connected  TFP_monthly_cost year)
 		
 		svmat	spell_pct_all
 		
-		rename	spell_pct_all?	(spell_pct_all	spell_pct_male	spell_pct_female	spell_pct_nonWhite	spell_pct_White	/*spell_pct_nocol	spell_pct_col*/)
+		rename	spell_pct_all?	(spell_pct_all	/* spell_pct_male	spell_pct_female	spell_pct_nonWhite	spell_pct_White */	/*spell_pct_nocol	spell_pct_col*/)
 		lab	var	spell_length	"Spell Length"
 		
 		*	Y-axis title in h-bar
@@ -3177,6 +3183,8 @@ graph twoway (connected  TFP_monthly_cost year)
 			graph	export	"${SNAP_outRaw}/Spell_length_dist.png", as(png) replace
 			graph	close
 			
+			
+			/*	2025-6-10 (disabled gender-and race)
 			*	By gender
 			graph hbar spell_pct_male	spell_pct_female, over(spell_length, /*descending*/	label(labsize(vsmall)))	legend(lab (1 "Male") lab(2 "Female") size(small) rows(1))	///
 				bar(1, fcolor(gs03*0.5)) bar(2, fcolor(gs10*0.6))	graphregion(color(white)) bgcolor(white) title(Distribution of Spell Length - By Gender) ytitle(Fraction)
@@ -3190,6 +3198,8 @@ graph twoway (connected  TFP_monthly_cost year)
 		
 			graph	export	"${SNAP_outRaw}/Spell_length_dist_race.png", replace
 			graph	close
+			
+			*/
 			
 			/* Disabled as of 2024-9-22. See the comment above.
 			*	By education (college degree)
@@ -3367,7 +3377,7 @@ graph twoway (connected  TFP_monthly_cost year)
 		}
 		
 		mat	colnames	trans_2by2_combined			=	"N"	"Insecure in both rounds" "Insecure in 1st round only" "Insecure in 2nd round only" "Secure in both rounds" "Persistence" "Entry"
-		mat	list	trans_2by2_combined
+		mat	list		trans_2by2_combined
 		mat	colnames	trans_2by2_persistence_byyr	=	"1981-1990" "1991-2000" "2001-2010" "2011-2020"
 		mat	colnames	trans_2by2_entry_byyr	=	"1981-1990" "1991-2000" "2001-2010" "2011-2020"
 		mat	colnames	trans_2by2_chronic_byyr	=	"1981-1990" "1991-2000" "2001-2010" "2011-2020"
@@ -3382,6 +3392,11 @@ graph twoway (connected  TFP_monthly_cost year)
 		putexcel	A40	=	matrix(trans_2by2_persistence_byyr), names overwritefmt nformat(number_d2)	//	3a
 		putexcel	A55	=	matrix(trans_2by2_entry_byyr), names overwritefmt nformat(number_d2)	//	3a
 		putexcel	A70	=	matrix(trans_2by2_chronic_byyr), names overwritefmt nformat(number_d2)	//	Table 4
+		
+		*	Table 6
+		putexcel	set "${SNAP_outRaw}/Trans_matrix_7919_ind", sheet(Tab6_chronic_FI_by_decade) modify
+		putexcel	A5	=	matrix(trans_2by2_chronic_byyr), names overwritefmt nformat(number_d2)	//	3a
+		
 		
 		*	Make it as a graph
 		

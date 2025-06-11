@@ -148,11 +148,12 @@
 			*	I do NOT use survey structure (but still use weight)
 			*	I use Poisson quasi-MLE estimation, instead of ppml with Gamma in the original PFS paper
 			*	I include individual-FE
+				*	(2025-6-10) Individual FE may be dropped, as it makes PFS vary within HH.
 			*	Please refer to "SNAP_PFS_const_test.do" file for more detail.
 			
 			*	All sample
 			ppmlhdfe	${depvar}	${statevars} ${demovars}	${eduvars} 	${empvars}	${healthvars}	${familyvars}	${econvars}	${foodvars}	[pweight=wgt_long_ind], ///
-				absorb(x11101ll ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
+				absorb(/* x11101ll */ ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
 			
 			*	Predict fitted value and residual
 			cap	drop	ppml_step1_sample
@@ -177,7 +178,7 @@
 		
 			*	Poisson quasi-MLE
 			ppmlhdfe	`depvar'	${statevars} ${demovars}	${econvars}	${empvars}	${healthvars}	${familyvars}	${eduvars}	${foodvars}	[pweight=wgt_long_ind], ///
-				absorb(x11101ll ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
+				absorb(/* x11101ll */ ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
 			est store ppml_step2
 			
 			
@@ -351,6 +352,8 @@
 		*	Save
 		save	"${SNAP_dtInt}/SNAP_long_PFS", replace
 
+	
+		
 		
 		*	Regress PFS on characteristics
 		*	(2023-1-18) This one needs to be re-visited, considering what regression method we will use (svy prefix, weight, fixed effects, etc.)
