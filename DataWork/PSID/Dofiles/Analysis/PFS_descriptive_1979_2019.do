@@ -1796,7 +1796,7 @@ graph twoway (connected  TFP_monthly_cost year)
 		save	"${SNAP_dtInt}/SNAP_descdta_1979_2019", replace	//	Inermediate descriptive data for 1979-2019
 		
 		
-		
+		use	"${SNAP_dtInt}/SNAP_descdta_1979_2019", clear
 		*	Preparing data to be shared with Senan
 	
 			*	(2024-7-8)	Additional cleaning
@@ -1824,9 +1824,10 @@ graph twoway (connected  TFP_monthly_cost year)
 			local	indvars		ind_female ind_race ind_White ind_employed_dummy ind_edu_cat
 			local	FSSSvars	FSSS_cat FSSS_raw FSSS_FI
 			local	PFSvars		PFS_7919 PFS_FS_7919 PFS_FI_7919
+			local	foodvars	foodexp_tot_inclFS_pc  foodexp_tot_inclFS_pc_real	foodexp_W_TFP	foodexp_W_TFP_real	foodexp_W_TFP_pc	foodexp_W_TFP_pc_real	NME
 			
-			order	`IDvars'	`samplevars'	`rpvars'	`indvars'	`FSSSvars'	`PFSvars'
-			keep	`IDvars'	`samplevars'	`rpvars'	`indvars'	`FSSSvars'	`PFSvars'
+			order	`IDvars'	`samplevars'	`rpvars'	`indvars'	`FSSSvars'	`PFSvars'	`foodvars'
+			keep	`IDvars'	`samplevars'	`rpvars'	`indvars'	`FSSSvars'	`PFSvars'	`foodvars'
 			
 			*	Save
 			compress
