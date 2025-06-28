@@ -1071,11 +1071,12 @@ Thank you for giving us the opportunity to consider your work and I look forward
 					*	Poverty rate
 					
 				*	Bivariate regression of 4 variables above
+				
+				*	Disposable income
 				cap	drop	PFS_cutoff_income_hat
 				cap	drop	PFS_cutoff_income_e
 				cap	drop	PFS_cutoff_income_e2
-				
-				*	Disposable income
+			
 				reg	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	ln(disposable income per capita)
 				predict	PFS_cutoff_income_hat
 				predict	PFS_cutoff_income_e, resid
@@ -1092,14 +1093,19 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				predict	PFS_cutoff_nonWhite_e, resid
 				gen		PFS_cutoff_nonWhite_e2	=	(PFS_cutoff_nonWhite_e)^2
 				est	store	PFS_cutoff_nonWhite
-				
-				
+						
 				*	GDP growth per capita
+				cap	drop	PFS_cutoff_GDP_hat
+				cap	drop	PFS_cutoff_GDP_e
+				cap	drop	PFS_cutoff_GDP_e2
+				
 				reg	PFS_threshold_ppml_noCOLI GDP_pc_growth	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	GDP per capita growth rate
 				est	store	PFS_cutoff_GDPgrowth
-				
-				
-				
+				predict	PFS_cutoff_GDP_hat
+				predict	PFS_cutoff_GDP_e, resid
+				gen		PFS_cutoff_GDP_e2	=	(PFS_cutoff_GDP_e)^2
+				est	store	PFS_cutoff_GDPgrowth
+								
 				*	National poverty rate
 				cap	drop	PFS_cutoff_pov_hat
 				cap	drop	PFS_cutoff_pov_e
@@ -1133,7 +1139,16 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				gen		PFS_cutoff_lowinc_e2	=	(PFS_cutoff_pov_e)^2
 				est	store	PFS_cutoff_lowinc
 				
-					
+				*	(2025-6-28)	Unemployment rate
+				cap	drop	PFS_cutoff_unemp_hat
+				cap	drop	PFS_cutoff_unemp_e
+				cap	drop	PFS_cutoff_unemp_e2
+				
+				reg	PFS_threshold_ppml_noCOLI unemp_rate	if	!mi(PFS_threshold_ppml_noCOLI), robust	//	Poverty rate
+				predict	PFS_cutoff_unemp_hat
+				predict	PFS_cutoff_unemp_e, resid
+				gen		PFS_cutoff_unemp_e2	=	(PFS_cutoff_unemp_e)^2
+				est	store	PFS_cutoff_unemp
 				
 				*	Multivariate regressions
 					
@@ -1203,9 +1218,19 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				gen		PFS_cutoff_full2_e2	=	(PFS_cutoff_full2_e)^2
 				est	store	PFS_cutoff_full2
 				
+				*	(2025-6-28) Poverty rate/SNAP rate/unemployment rate/income
+				cap	drop	PFS_cutoff_full3_hat
+				cap	drop	PFS_cutoff_full3_e
+				cap	drop	PFS_cutoff_full3_e2
+			
+				reg	PFS_threshold_ppml_noCOLI 	  unemp_rate  pov_rate_national pct_SNAP_person  /* 	ln_dis_per_inc_pc	 */	if	!mi(PFS_threshold_ppml_noCOLI), robust
+				predict	PFS_cutoff_full3_hat
+				predict	PFS_cutoff_full3_e, resid
+				gen		PFS_cutoff_full3_e2	=	(PFS_cutoff_full3_e)^2
+				est	store	PFS_cutoff_full3
 					
-					graph	twoway	(line	pov_rate_national	year)	(connected	pct_SNAP_person	year)	(connected change_inc_mean_lowestfifth year),	///
-					 legend(label(1 "Poverty rate") label(2 "SNAP participation rate") label(3 "Change in 20 percentile mean income (real)") row(1) size(small) keygap(0.1) pos(6) symxsize(5))	///
+					graph	twoway	(line	pov_rate_national	year)	(connected	pct_SNAP_person	year)	(connected change_inc_mean_lowestfifth year, yaxis(2))	(connected	unemp_rate	year),	///
+					 legend(label(1 "Poverty rate") label(2 "SNAP participation rate") label(3 "Change in 20 percentile mean income (real)")  label(4 "Unemployment rate")  row(1) size(small) keygap(0.1) pos(6) symxsize(5))	///
 					 ytitle(Percentage) title(Trends in new economic indicators in the model)
 					 
 				    graph	export	"${SNAP_outRaw}/trends_new_indicators.png", replace	
@@ -1260,7 +1285,7 @@ Thank you for giving us the opportunity to consider your work and I look forward
 				*	Graph actual PFS cut-off(1995-2019) and predicted PFS cut-off
 				graph	twoway	///
 					(line PFS_threshold_ppml_noCOLI year, lpattern(solid) xaxis(1 2) yaxis(1) legend(label(1 "Realized")))	///
-					(line PFS_cutoff_pov_hat		year, lpattern(dash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(2 "Predicted (poverty rate)")))	///
+					(line PFS_cutoff_unemp_hat		year, lpattern(dash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(2 "Predicted (unemp rate)")))	///
 					(line PFS_cutoff_full_hat		year, lpattern(dash_dot) xaxis(1 2) yaxis(1)  legend(label(3 "Predicted  (current)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
 					(line PFS_cutoff_full2_hat		year, lpattern(dot) lcolor(black) xaxis(1 2) yaxis(1)  legend(label(4 "Predicted  (new)") row(1) size(small) keygap(0.1) pos(6) symxsize(5))),	///
 								/*xline(1980 1993 1999 2007, axis(1) lpattern(dot))*/ xlabel(/*1980 "No payment" 1993 "xxx" 2009 "ARRA" 2020 "COVID"*/, axis(2))	///
@@ -1623,7 +1648,7 @@ graph twoway (connected  TFP_monthly_cost year)
 			replace	`var'	=	PFS_threshold_ppml_noCOLI	if	inrange(year,1995,2019)	//	Realized cut-off using USDA FI prevalence rate
 				
 				*	(2025-2-22) Use new cut-off
-				replace	`var'	=	PFS_cutoff_SNAP_hat 			if	inrange(year,1979,1994)	//	Predicted cut-off from macroindicators
+				replace	`var'	=	PFS_cutoff_full3_hat 			if	inrange(year,1979,1994)	//	Predicted cut-off from macroindicators
 				lab	var	`var'	"PFS FI threshold (1979-2019)"
 		
 		
