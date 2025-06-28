@@ -264,7 +264,7 @@
 			
 			*	All sample
 			ppmlhdfe	${depvar}	${statevars} ${demovars}	${eduvars} 	${empvars}	${healthvars}	${familyvars}	${econvars}	${foodvars}	[pweight=wgt_long_ind], ///
-				absorb(x11101ll ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
+				absorb(/* x11101ll */ ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
 			
 			ereturn list
 			est	sto	ppml_step1_exclFS
@@ -284,7 +284,7 @@
 		
 			*	Poisson quasi-MLE
 			ppmlhdfe	`depvar'	${statevars} ${demovars}	${econvars}	${empvars}	${healthvars}	${familyvars}	${eduvars}	${foodvars}	[pweight=wgt_long_ind], ///
-				absorb(x11101ll ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
+				absorb(/* x11101ll */ ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
 			est store ppml_step2_exclFS
 			gen	ppml_step2_sample_exclFS=1	if	e(sample)==1 
 			predict	double	var1_foodexp_ppml_exclFS	if	ppml_step2_sample_exclFS==1	// (2023-06-21) Poisson quasi-MLE does not seem to generate negative predicted value, which is good (no need to square them)
