@@ -942,8 +942,25 @@
 	
 	*	Prepare external data
 	if	`ext_data'==1	{
-										
+		
+
+		*	National Gini index (Source: World Bank)
+		*	(2025-6-25) Imported from PFS_descriptive_1979_2019.do
+		import excel "${clouldfolder}\DataWork\World Bank\Gini_index.xls", sheet("Data") clear
+		
+			rename	(E-BP)	Gini_index#, addnumber(1960)
+			keep	if	A=="United States"
+			reshape	long	Gini_index, i(A) j(year)
+			keep	year	Gini_index
+			destring		Gini_index, replace
+			drop	if		mi(Gini_index)
+			lab	var			Gini_index	"Gini index"
+			
+			*	Save
+			save	"${SNAP_dtInt}/Gini_index", replace
 				
+		
+		
 		*	Unemployment Rate (BLS)
 			
 			*	Nationwide (for program summary)
@@ -956,6 +973,72 @@
 			
 			save	"${SNAP_dtInt}/Unemployment Rate_nation",	replace
 	
+		
+		
+		*	Real personal consumer expenditure (PCE)
+		*	(2025-6-25) Imported from PFS_descriptive_1979_2019.do
+		
+			*	Source: FRED (https://fred.stlouisfed.org/series/DPCERL1A225NBEA)
+			import delimited "${clouldfolder}\DataWork\FRED\DPCERL1A225NBEA.csv", clear 
+			gen	year=	substr(observation_date,1,4)
+			destring	year,	replace
+			rename	dpcerl1a225nbea	PCE_real_change
+			lab	var	PCE_real_change	"Change in Real Personal Consumption Expenditure (PCE)"
+			keep	year	PCE_real_change
+			
+			*	Save
+			save	"${SNAP_dtInt}/PCE_real_change", replace
+		
+		
+				
+		*	Public social spending (Source: OECD)
+		*	(2025-6-25) Imported from PFS_descriptive_1979_2019.do
+		
+			import excel "${clouldfolder}\DataWork\OECD\public_social_spending.xlsx", sheet("Sheet1") clear
+			
+				rename	(B-AR)	social_spending#, addnumber(1980)
+				keep	if	A=="United States"
+				reshape	long	social_spending, i(A) j(year)
+				keep	year	social_spending
+				drop	if		mi(social_spending)
+				destring		social_spending, replace
+				lab	var			social_spending	"Social spending (public) as a share of GDP"
+			
+				*	Save
+				save	"${SNAP_dtInt}/social_spending", replace
+				
+		
+				
+		*	Add official food insecurity prevalence rate (HH and individual) from the USDA report.
+		*	(2025-6-25) Imported from PFS_descriptive_1979_2019.do
+			*	Source
+			*	2020 report (2006-2019), 2006 report (1998-2005), 1999 report (1995-1997)
+				
+				*	Person
+				import excel "${clouldfolder}/DataWork/USDA/DataSets/Raw/US_FI_prevalence_rate.xlsx", sheet("person") firstrow clear
+				rename	(*)	(year	total_K	FS_K	FS_pct	FI_K	FI_pct	LFS_K	LFS_pct	VLFS_K	VLFS_pct)
+				foreach	pct_var	in	FS_pct	FI_pct	LFS_pct	VLFS_pct	{
+					
+					replace	`pct_var'	=	`pct_var'	/	100
+					
+				}
+				
+				lab	var	FI_pct	"Official Individual FI rate"
+				tempfile 	official_FI_indiv
+				save		`official_FI_indiv', replace
+				
+				
+				*	HH
+				import excel "${clouldfolder}/DataWork/USDA/DataSets/Raw/US_FI_prevalence_rate.xlsx", sheet("HH") firstrow clear
+				rename	(*)	(year	FSSS_FI_official)
+				replace	FSSS_FI_official	=	FSSS_FI_official/100
+				lab	var	FSSS_FI_official	"Official Household FI rate"
+				
+				merge	1:1	year	using	`official_FI_indiv',	nogen	assert(3)
+			
+						
+			compress				
+			save	"${SNAP_dtInt}/USDA_FI_prevalnce_rate_person.dta", replace
 		
 		
 		*	State data with unique PSID code
@@ -1049,8 +1132,72 @@
 					reg FS_rec_wth citi6016, robust
 					reg	FS_rec_wth	inst6017_nom, robust
 			
-
+	
+		
+		
+		*	State poverty rate (Source: Census)
+		*	(2025-6-28)	Imported from AEPP analysis file.
+		
+			
+			*	1979 (Source: States Ranked by Person's Poverty Rate in 1969, 1979 and 1989)
+				*	URL: https://www.census.gov/data/tables/time-series/dec/cph-series/cph-l/cph-l-183.html
+			import excel "${clouldfolder}\DataWork\Census\State poverty rates\cph-l-183.xls", sheet("CPHL-183") cellrange(A4:H71) clear
+			keep	A	E
+			rename	(A	E)	(state	state_pov_rate)
+			drop	in	1/5
+			drop	if	mi(state_pov_rate)
+			replace	state="Washington D.C." if state=="District of Columbia"
+			destring	state_pov_rate, replace
+			gen	year=1979
+			
+			tempfile	state_pov_rate_1979
+			save		`state_pov_rate_1979', replace
+			
+			
+			*	1980-2023 (Source: Table 9: Poverty of People by Region)
+				*	URL: https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-poverty-people.html
+			import excel "${clouldfolder}\DataWork\Census\State poverty rates\hstpov19.xlsx", sheet("pov19") cellrange(A5:F2443) firstrow clear
+			keep	State Percentinpoverty
+			drop	if	Percentinpoverty=="Percent in poverty"
+			destring	Percentinpoverty, replace
+			
+			drop	in	364/415	//	Drop earlier estimates within the same year (Use only updated estiamtes)
+			drop	in	572/623	//	Drop earlier estimates within the same year (Use only updated estiamtes)
+			
+			drop	if	mi(Percentinpoverty)
+			rename	(State	Percentinpoverty)	(state	state_pov_rate)
+			replace	state="Washington D.C." if state=="District of Columbia"
+			
+			*	Assgin years
+			gen	year=.
+			
+			
+			forval	i=0/43	{
 				
+				local	startob=1+(51*`i')
+				local	endob=51+(51*`i')
+				local	year=2023-`i'
+				
+				*	Validate data
+				di	"i is `i', startob is `startob'"
+				assert	state=="Alabama"	in	`startob'
+				asser	state=="Wyoming"	in	`endob'
+				
+				replace	year=`year'	in	`startob'/`endob'
+				
+				
+			}
+			
+			*	Append 1979 data
+			append	using	`state_pov_rate_1979'
+			merge	m:1	state	using	"${SNAP_dtRaw}/Statecode.dta",	nogen	assert(3)
+			lab	var	state_pov_rate	"State Poverty Rate (percentage)"
+			xtset	statecode	year
+			
+			*	Save
+			compress
+			save	"${SNAP_dtInt}/state_pov_rate_1979_2023", replace
+		
 				
 		
 		*	State GDP
@@ -1127,6 +1274,78 @@
 			save	"${SNAP_dtInt}/GDP_1975_2019",	replace
 			
 
+		*	National GDP growth rate
+		*	(2025-6-28)	Imported from AEPP do-file	
+			
+			*	(2024-6-25)	Import GDP growth rate (Source: BEA)
+			import excel "${clouldfolder}/DataWork/BEA/change_in_GDP.xlsx", clear
+		
+			keep	(A-C)
+			rename	(A-C)	(year GDP_growth_nominal GDP_growth_real)
+			drop	in	1/8
+			drop	if	mi(year)
+			destring	*, replace 
+			lab	var	GDP_growth_nominal	"Annual GDP growth rate (percent) - nominal"
+			lab	var	GDP_growth_real		"Annual GDP growth rate (percent) - 2017 dollars"
+			
+			tempfile	GDP_growth
+			save		`GDP_growth'
+			
+			*	Per capita growth
+			import excel "${clouldfolder}\DataWork\World Bank\GDP_per_capita_growh_rate.xls", sheet("Data") clear
+			
+				rename	(F-BO)	GDP_pc_growth#, addnumber(1961)
+				keep	if	A=="United States"
+				reshape	long	GDP_pc_growth, i(A) j(year)
+				keep	year	GDP_pc_growth
+				destring		GDP_pc_growth, replace
+				lab	var			GDP_pc_growth	"Annual GDP per capita growth rate (percent)"
+			
+			
+			*	Merge two different GDP data
+			merge	1:1	year	using	`GDP_growth', nogen assert(2 3) keep(3)
+			
+			save	"${SNAP_dtInt}/National_GDP_growth_1975_2019",	replace
+		
+		
+		
+		*	Mean household income received by each 5th
+			*	(Source: https://www.census.gov/data/tables/time-series/demo/income-poverty/historical-income-households.html)
+			*	(2025-6-28) Imported from PFS_descriptive_1979_2019.do
+		import excel "${clouldfolder}/DataWork/Census/Mean Household Income Received by Each Fifth/h03ar.xlsx", sheet("h03ar") cellrange(A8:G128) firstrow clear
+			
+			drop	in	1/61	//	drop current dollars
+			gen	year	=	substr(Year,1,4)
+			
+				*	For duplicate years (2013 and 2017), use the top row (seems to have the later version reflected. Check the original Excel file for more details.)
+				drop	if	inlist(Year,"2017","2013 (38)")
+				
+			drop	Year
+			order	year
+			destring	*,	replace
+			
+			rename	(Lowestfifth Secondfifth Middlefifth Fourthfifth Highestfifth Top5percent)	///
+					(income_mean_lowestfifth	income_mean_2ndfifth	income_mean_3rdfifth	income_mean_4thfifth	income_mean_highestfifth	income_mean_top5pct)
+					
+			foreach	cat	in	lowest	2nd	3rd	4th	highest	{
+				
+				lab	var	income_mean_`cat'fifth	"Real Mean HH income (`cat' fifth)"
+				
+			}
+			
+			lab	var	income_mean_top5pct	"Real Mean HH income (top 5%)"
+			
+			tsset	year
+			gen	change_inc_mean_lowestfifth	=	(income_mean_lowestfifth - l.income_mean_lowestfifth )/l.income_mean_lowestfifth
+			lab	var	change_inc_mean_lowestfifth	"Annual change in real mean HH income (bottom 20 percentile)"
+			
+			graph	twoway	(connected change_inc_mean_lowestfifth year)
+			
+			compress				
+			save	"${SNAP_dtInt}/Census_change_mean_HH_income_lowestfifth.dta", replace
+
+		
+		
 		
 		*	Finance information (1977-2019)
 			*	Original U.S. Census data do not have state govt data pre-1977 (except 1972)
@@ -2564,7 +2783,73 @@
 		lab	var	famnum		"Family size"
 		lab	var	incomePL	"Income Poverty Line"
 
-		save	"${SNAP_dtInt}/incomePL", replace				
+		save	"${SNAP_dtInt}/incomePL", replace			
+		
+		
+				
+		
+		*	National disposable personal income per capita (2017 dollars)
+		*	Source: FRED
+		*	(2025-6-25)	Imported from PFS_descriptive_1979_2019.do file
+		
+				
+			*	National
+			import excel "${clouldfolder}\DataWork\BEA\real_disposable_income_pc.xls", sheet("FRED Graph") clear
+			drop	in	1/11
+			gen	year = _n + 1958
+			keep	if	inrange(year,1959,2023)
+			drop	A
+			rename	B	dis_per_inc_pc
+			destring	dis_per_inc_pc,	replace
+			gen			ln_dis_per_inc_pc	=	ln(dis_per_inc_pc)
+			lab	var		year	"Year"
+			lab	var		dis_per_inc_pc		"Disposable personal income per capita - 2017 dollars"
+			lab	var		ln_dis_per_inc_pc	"ln(disposable personal income per capita - 2017 dollars)"
+			order	year	dis_per_inc_pc	ln_dis_per_inc_pc
+			
+			*	Save
+			save	"${SNAP_dtInt}/dis_per_inc_pc", replace
+		
+				
+
+		*	State disposable personal income per capita (2017 dollars)
+		*	Source: BEA	
+			*use	"${SNAP_dtRaw}/Statecode.dta", clear
+			import excel "${clouldfolder}\DataWork\BEA\disposable_income_pc_state.xlsx", sheet("Table") cellrange(B5:AS71) firstrow clear
+			rename (C-AS) dis_per_inc_pc#, addnumber(1979)
+			rename	B	state
+			drop	in	1/2
+			drop	in	52/59
+			drop	if	mi(state)
+
+			replace	state="Alaska" if state=="Alaska *"
+			replace	state="Hawaii" if state=="Hawaii *"
+			replace	state="Washington D.C." if state=="District of Columbia"
+			
+			reshape	long	dis_per_inc_pc, i(state) j(year)
+			lab	var	dis_per_inc_pc	"State per capita disposable income (current)"
+			destring	dis_per_inc_pc, replace
+			
+			*	Inport CPI to compute real value (2019)
+			preserve
+				use	"${SNAP_dtInt}/CPI_1947_2021", clear
+				collapse	(mean)	CPI, by(year)
+				tempfile	CPI_annual
+				save		`CPI_annual'
+			restore
+			merge	m:1	year	using	`CPI_annual',	nogen	assert(2 3)	keep(3)
+			
+			gen		dis_per_inc_pc_real	=	dis_per_inc_pc * (100/CPI)
+			lab	var	dis_per_inc_pc_real	"State per capita disposable income (2019 dollars)"
+			
+			*	Import PSID state code
+			merge	m:1	state	using	"${SNAP_dtRaw}/Statecode.dta",	nogen	assert(3)
+			
+			*	Save
+			save	"${SNAP_dtInt}/dis_per_inc_pc_state", replace
+			
+		
+		
 	}
 	
 	/****************************************************************
@@ -3439,8 +3724,7 @@
 				
 				assert	`zero_seqnum'	|	`invalid_mth'	if	_merge==1
 				drop	_merge
-				
-			
+							
 			*	Import income poverty line
 			merge	m:1	year famnum	using	"${SNAP_dtInt}/incomePL", nogen keep(1 3)
 			
@@ -3449,6 +3733,35 @@
 			
 			*	Import	state and government ideology data
 			merge	m:1	year	rp_state	using	"${SNAP_dtInt}/citizen_government_ideology", /*gen(merge2)*/ nogen keep(1 3) keepusing(citi6016 inst6017_nom)
+			
+			*	Import USDA FI prevalnce rate (person)
+			*	(2025-6-28) Imported from PFS_descriptive_1979_2019.do
+			merge	m:1	year	using	"${SNAP_dtInt}/USDA_FI_prevalnce_rate_person.dta",  keep(1 3) nogen keepusing(FI_pct LFS_pct	VLFS_pct	FSSS_FI_official)
+			*lab	var	FI_pct		"FI (national individual)"
+			lab	var	LFS_pct		"Low food secure (national Individual)"
+			lab	var	VLFS_pct	"Very low food secure (national Individual)"
+			
+
+
+			
+			
+			/*	** Let's not import national stats for now. Because they change when collapsed with weight.
+			*	Import national social spending
+			merge	m:1	year	using	"${SNAP_dtInt}/social_spending", /*gen(merge2)*/ nogen keep(1 3) keepusing(social_spending)	
+			
+			*	National disposable income
+			merge	m:1	year	using	"${SNAP_dtInt}/dis_per_inc_pc", /*gen(merge2)*/ nogen keep(1 3) // keepusing(citi6016 inst6017_nom)	social_spending
+				
+			*	State disposable income
+			merge	m:1	year	rp_state	using	"${SNAP_dtInt}/dis_per_inc_pc_state", /*gen(merge2)*/ nogen keep(1 3)  keepusing(dis_per_inc_pc dis_per_inc_pc_real)	social_spending
+			
+			*	National GDP growth 
+			merge	m:1	year	using	"${SNAP_dtInt}/dis_per_inc_pc", /*gen(merge2)*/ nogen keep(1 3) 
+			
+			*	National Gini index
+			merge	m:1	year	using	"${SNAP_dtInt}/Gini_index", /*gen(merge2)*/ nogen keep(1 3) 
+			*/
+			
 			
 			
 			compress
@@ -3936,11 +4249,33 @@
 			
 			label	var	`var'	"HFSM FI"
 			
+			
+			*	Add variables from PFS_descriptive_1979_2019.do
+			*	Some of them are exacxtly the same as those already constructed, but I generate anyway to prevent any programming error.
+			clonevar	FSSS_FI	=	HFSM_FI
+			lab	var	`var'	"Food insecure (FSSS)"
+			
+			*	Treat marginally FS as FI
+				loc	var	FSSS_FI_v2
+				cap	drop	`var'
+				gen		`var'=0	if	inrange(HFSM_cat,1,1)
+				replace	`var'=1	if	inrange(HFSM_cat,2,4)
+				lab	var	`var'	"Food insecure (FSSS) - ver2"
+			
 			*	FSSS-rescaled
 			cap	drop	FSSS_rescale
 			gen	FSSS_rescale = (9.3-HFSM_scale)/9.3
 			label	var	FSSS_rescale "FSSS (re-scaled)"
 			
+					*	FI indicators using FSSS
+			
+				*	Treat marginally FS as FS
+				loc	var	FSSS_FI
+				cap	drop	`var'
+				gen		`var'=0	if	inrange(HFSM_cat,1,2)
+				replace	`var'=1	if	inrange(HFSM_cat,3,4)
+				lab	var	`var'	"Food insecure (FSSS)"
+
 		
 		*	Family income
 		lab	var	fam_income	"Total family income"

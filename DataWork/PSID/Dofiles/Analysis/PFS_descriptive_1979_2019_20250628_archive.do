@@ -1,4 +1,46 @@
+*	This do-file constructs spells and generates descriptive analyses for historical PFS data, from 1979 to 2019 (with some years missing)
 
+/*
+
+AEPP comments from craig
+Thank you very much for taking seriously my comments on the previous version.  Overall, the paper is better now.  I have a few additional comments on this version brought about by the changes you have made.
+
+1.  In the pre-1996 time period, the PFS thresholds now are designed to reflect the overall economic conditions in those time periods rather than just the same level for all years.  However, while the underlying methods are potentially fine, something is really off with the results.  In the results in column (5), with the exception of the poverty variable, each of the variables has the opposite sign of what one would expect.  They are also different empirically than other studies that have used macroeconomic variables to predict food insecurity (e.g., Map the Meal Gap).  Curiously, you also do not include the unemployment rate which is also used in most studies of the impact of the macroeconomy on various outcomes.  I would encourage you, therefore, to (a) figure out why these results are so off (maybe something is off in the data for a few of the years?) and (b) add in the unemployment rate.  I don't want to create too much work for you so if the subsequent results are reasonable, I  think this is fine to than use those results.  However, if they still remain very off like they are currently, I would consider using state-level methods as found in, e.g., Map the Meal Gap.  This would substantially increase your sample size and allow for the inclusion of more relevant variables (e.g., state fixed effects).  I should note that probably due to the odd results of your model for this, the estimated food insecurity rates for the recession in 1979 to 1982 don't make sense.  Despite the unemployment rate and other macroeconomic indicators being similar to the Great Recession, you are finding food insecurity rates that are some of the lowest over this time period.  In particular, for example, the food insecurity rate in 1979 and 1980 are two of the lowest - this doesn't make sense to me.
+
+2.  As further articulated in this version, the composition and levels from the PFS method will differ dramatically from the food insecurity rates found in the PSID.  This is not unexpected given (a) the results from Gundersen and Ribar and (b) PSID in general finds somewhat lower rates than the CPS.  Insofar as only 2 percent of the PSID sample is food insecure under your estimated measure and under the reported measure, one can either use your measure or the actual PSID measure.  Your work here and in your AJAE paper definitely represents an important contribution to filling in the missing years but researchers will have to use your method for their work or the actual food insecurity rates and the results will differ dramatically depending on which is used.  So, in the conclusion and elsewhere, I would recommend addressing this issue since the PSID is likely going to continue to be used for food insecurity research, especially for longitudinal research.  (By the way, in this discus
+ sion I would cite a very nice recent paper in AJAE that uses the PSID - https://onlinelibrary.wiley.com/doi/full/10.1111/ajae.12470 along with the a few other papers that have used the longitudinal structure of the PSID to examine food insecurity.)
+
+3.  I would encourage you to rework some of the tables, figures, and their order.  Here are some examples:
+
+a.  The standard deviations for binary variables aren't informative so, like is standard, I would only include these for the continuous variables in Table 1.  And, you could put the standard deviations in parenthese below the means.  And, given that the ns are similar for most of the variables, this could be condensely stated in the notes.
+
+b.  A similar comment as (a) holds for Table 4.
+
+c.  I would drop Figure 1 since it really isn't that relevant for all the rest of the results in the paper.  It can be added to the appendix if you feel this is important enough to keep in some form.
+
+d.  I would drop Figure 2 for three reasons.  First, it includes information that you haven't yet established.  In other words, the pre-1996 food insecurity rates.  Second, it basically shows the same information as found in Figures 3 and 4.  Third, some years are missing.
+
+e.  There is nothing wrong with Figure 5 but the results from this have been covered extensively elsewhere and the particularly methods being used in this paper do not provide new insights.  In contrast, your later tables and figures do provide new and interesting insights through the use of your new methods.
+
+f.  I don't think Figure 7 adds much to the paper and could be deleted or put into an appendix.
+
+4.  Something seems off about Figure 6.  There is a bump up in numbers for a spell length of 26 which is probably due to censoring of some kind.  Conversely, there are no spell lengths above 26 despite there being 41 years worth of data.  Of course, spell lengths of 27 or more will be very rare but it is odd that there seems to be censoring at 26 rather than, say, 41. 
+
+5.  One thing that I think would be very interesting that I don't seem to find in the current version is about the proportion of the population that has at least one spell of food insecurity.  This would be very interesting and would place it in the literature looking at this same topic for poverty and other outcomes.  Plus, it should be readily available from your other results.
+
+6.  The conclusion is very short and doesn't add much to the paper.  I would expand this out and, as part of this, include (a) insights for researchers (including, e.g., the comment in (2)) and (b) insights for policymakers and program administrators.
+
+If you resubmit, please indicate in a cover letter how you responded to the comments I've raised.    Please follow the manuscript preparation and electronic submission instructions at
+https://onlinelibrary.wiley.com/page/journal/20405804/homepage/author-guidelines
+exactly and be sure to enter the manuscript ID number (4300) in step 4 of the electronic submission sequence.  This will automatically link your resubmission to our electronic records of your file, expediting the next round of reviews.
+
+Please feel free to contact me if you have any questions about my decision,
+or if you have difficulty reading any of the attachments. Please note that the journal requests resubmission of your paper within six months. We would like to get the full set of papers from this conference out "in print" and we would like to include  your paper.  So, if there is anyway you can get this to us sooner, that would be ideal.
+
+Thank you for giving us the opportunity to consider your work and I look forward to reading your revised version.
+
+
+*/
 
 	/***************************************************************
 		SECTION 1: Data prep		 									
@@ -9,6 +51,33 @@
 	
 	use	"${SNAP_dtInt}/SNAP_long_PFS", clear
 	lab	var	PFS_ppml_noCOLI		"PFS"
+
+
+	sort	year	x11101ll
+	
+		*	Import USDA FI prevalnce rate (person)
+		merge	m:1	year	using	"${SNAP_dtInt}/USDA_FI_prevalnce_rate_person.dta",  keep(1 3) nogen keepusing(FI_pct LFS_pct	VLFS_pct	FSSS_FI_official)
+		*lab	var	FI_pct		"FI (national)"
+		lab	var	LFS_pct		"Low food secure (national Individual)"
+		lab	var	VLFS_pct	"Very low food secure (national Individual)"
+		
+
+		*	FI indicators using FSSS
+			
+			*	Treat marginally FS as FS
+			loc	var	FSSS_FI
+			cap	drop	`var'
+			gen		`var'=0	if	inrange(HFSM_cat,1,2)
+			replace	`var'=1	if	inrange(HFSM_cat,3,4)
+			lab	var	`var'	"Food insecure (FSSS)"
+			
+			*	Treat marginally FS as FI
+			loc	var	FSSS_FI_v2
+			cap	drop	`var'
+			gen		`var'=0	if	inrange(HFSM_cat,1,1)
+			replace	`var'=1	if	inrange(HFSM_cat,2,4)
+			lab	var	`var'	"Food insecure (FSSS) - ver2"
+
 	
 	
 	*	Categorize food security status based on annual food security prevalence rate (1995-2019)
@@ -210,7 +279,83 @@
 			graph	close	
 		restore
 	
-	S < 0.5)"
+			
+	*	(2024-1-5) I disable the following code, as we no longer us this method.
+	
+	/*
+	
+	*	Construct FI indicator based on PFS
+	*	In LBH, we used flexible cut-off; set cut-off such that FI(PFS) prevalence rate is equal to the offical FI reported in the annual USDA report.
+	*	Since this period do not have such reference, we set 0.5 as a benchmark threshold.
+	
+	*	(2023-12-13) To give a reasonable threshold, I compare FI prevalence b/w PFS and FSSS using different thresholds.
+	use	"${SNAP_dtInt}/SNAP_long_PFS_cat", clear
+	
+			*	FI(PFS) with different cutoffs
+				loc	var	PFS_FI_07
+				cap	drop	`var'
+				gen		`var'=0	if	!inrange(PFS_ppml_noCOLI,0,0.7)
+				replace	`var'=1	if	inrange(PFS_ppml_noCOLI,0,0.7)
+				
+				loc	var	PFS_FI_06
+				cap	drop	`var'
+				gen		`var'=0	if	!inrange(PFS_ppml_noCOLI,0,0.6)
+				replace	`var'=1	if	inrange(PFS_ppml_noCOLI,0,0.6)
+				
+				loc	var	PFS_FI_05
+				cap	drop	`var'
+				gen		`var'=0	if	!inrange(PFS_ppml_noCOLI,0,0.5)
+				replace	`var'=1	if	inrange(PFS_ppml_noCOLI,0,0.5)
+				
+				loc	var	PFS_FI_04
+				cap	drop	`var'
+				gen		`var'=0	if	!inrange(PFS_ppml_noCOLI,0,0.4)
+				replace	`var'=1	if	inrange(PFS_ppml_noCOLI,0,0.4)
+				
+				loc	var	PFS_FI_03
+				cap	drop	`var'
+				gen		`var'=0	if	!inrange(PFS_ppml_noCOLI,0,0.3)
+				replace	`var'=1	if	inrange(PFS_ppml_noCOLI,0,0.3)
+				
+				
+				summ	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FSSS_FI	[aw=wgt_long_ind] if year==1999
+				summ	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FSSS_FI	[aw=wgt_long_ind] if year==2001
+				summ	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FSSS_FI	[aw=wgt_long_ind] if year==2003
+				summ	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FSSS_FI	[aw=wgt_long_ind] if year==2015
+				summ	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FSSS_FI	[aw=wgt_long_ind] if year==2017
+				summ	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FSSS_FI	[aw=wgt_long_ind] if year==2019
+				
+			
+			*	Time trend of food insecurity (by PFS) over years, over different cutoffs	
+			*	We see that the best cut-off point is 0.4 for earlier period (1999-2003) and 0.6 for later period (2015-2019)
+			*	So we use the average (0.5) as the single cut-off point.
+			preserve		
+				
+				collapse	(mean) PFS_ppml	PFS_FI_07	PFS_FI_06	PFS_FI_05	PFS_FI_04	PFS_FI_03	FI_pct	FSSS_FI HFSM_FI	[aw=wgt_long_ind], by(year)	//	weighted average by year
+			
+				
+				*	FI prevalence rate by different cut-offs.
+				twoway	(line PFS_FI_07	year if inrange(year,1999,2019), lc(green) lp(solid) lwidth(medium)  graphregion(fcolor(white)) legend(label(1 "(PFS < 0.7)")))	///
+						(line PFS_FI_06	year if inrange(year,1999,2019), lc(blue) lp(dash) lwidth(medium)graphregion(fcolor(white)) legend(label(2 "(PFS < 0.6)"))) 	///
+						(line PFS_FI_05	year if inrange(year,1999,2019), lc(red) lp(dot) lwidth(medium)	 graphregion(fcolor(white)) legend(label(3 "(PFS < 0.5)")))	///
+						(line PFS_FI_04	year if inrange(year,1999,2019), lc(green) lp(dash_dot) lwidth(medium)	 graphregion(fcolor(white)) legend(label(4 "(PFS < 0.4)")))	///
+						(line PFS_FI_03	year if inrange(year,1999,2019), lc(gray) lp(shortdash) lwidth(medium)	 graphregion(fcolor(white)) legend(label(5 "(PFS < 0.3)")))	///
+						(line FI_pct	year if inrange(year,1999,2019), lc(black) lp(longdash) lwidth(medium)	 graphregion(fcolor(white)) legend(label(6 "USDA official")))	///
+						(connected FSSS_FI	year if inlist(year,1999,2001,2003), lc(red) lp(shortdash) lwidth(medium)	msymbol(circle)	graphregion(fcolor(white)) legend(label(7 "FSSS")))	///
+						(connected FSSS_FI	year if inlist(year,2015,2017,2019), lc(red) lp(shortdash) lwidth(medium)	msymbol(circle) graphregion(fcolor(white)) legend(label(8 "FSSS") row(2) size(small) keygap(0.1) symxsize(5))),	///
+						title("Food Insecurity Prevalence Rates") ytitle("Fraction") xtitle("Year") name(FI_prevalence_cutoffs, replace)
+				graph	export	"${SNAP_outRaw}/PFS_FI_rate_cutoffs_9919.png", as(png) replace
+				graph	close	
+			restore
+			
+			
+			
+		loc	var	PFS_FI_ppml_noCOLI
+		cap	drop	`var'
+		gen		`var'=.
+		replace	`var'=0	if	!mi(PFS_ppml_noCOLI)	&	!inrange(PFS_ppml_noCOLI,0,0.5)
+		replace	`var'=1	if	!mi(PFS_ppml_noCOLI)	&	inrange(PFS_ppml_noCOLI,0,0.5)
+		lab	var	`var'	"Food insecure (PFS < 0.5)"
 		*/
 		
 		
