@@ -352,7 +352,7 @@
 		*	Save
 		save	"${SNAP_dtInt}/SNAP_long_PFS", replace
 
-	
+		use		"${SNAP_dtInt}/SNAP_long_PFS",	clear
 		
 		
 		*	Regress PFS on characteristics
