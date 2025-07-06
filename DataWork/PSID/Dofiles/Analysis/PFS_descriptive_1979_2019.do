@@ -957,7 +957,7 @@
 			 
 
 			 
-			 *	(2025-2-15) Import SNAP participation rate and poverty rate from Census data
+			 *	(2025-2-15) Import SNAP participation rate, poverty rate and unemployment from Census data
 			 merge	1:1	year	using	"${SNAP_dtInt}/SNAP_1979_2019_census_annual"
 			 replace	pov_rate_national	=	pov_rate_national/100
 			 replace	unemp_rate	=	unemp_rate/100
@@ -992,23 +992,23 @@
 			
 				
 			
-			*	(2025-2-15) Figure plotting PFS-based FI and other national statistics
+			*	Figure B1 (2025-2-15) Figure plotting PFS-based FI and other national statistics
 			replace	GDP_growth_real	=	GDP_growth_real/100
 			
 			twoway	/*(bar	upper year if inrange(year, 1988, 1991), bcolor(gs14) barwidth(2)	graphregion(fcolor(white)))*/	///
 					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1979,1987),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
 					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1992,2019),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
 					(line frac_SNAP_person		year if inrange(year,1979,2019), 	lc(red)	 lp(shortdash) lwidth(medium)	graphregion(fcolor(white)))	 ///
-					(line pov_rate_national		year if inrange(year,1979,2019),	lc(black) lp(dash) lwidth(medium)  graphregion(fcolor(white)))	 ///
+					(line unemp_rate			year if inrange(year,1979,2019),	lc(black) lp(dash) lwidth(medium)  graphregion(fcolor(white)))	 ///
 					(line GDP_growth_real		year if inrange(year,1979,2019), 	lc(black)	 lp(dot) lwidth(medium)	graphregion(fcolor(white))),	///
-					legend(order(1 "Food insecure (PFS-based)" 3 "SNAP participation " 4 "Poverty" 5 "GDP Growth" )	///
+					legend(order(1 "Food insecure (PFS-based)" 3 "SNAP participation " 4 "Unemployment Rate" 5 "GDP Growth" )	///
 					row(2) size(small) keygap(0.1) symxsize(5) pos(6)) /*yscale(range(0 0.2) titlegap(1)) ylabel(0(0.025)0.2)*/ ///
 					note("Note: PFS is missing from 1988 to 1991 due to missing data in PSID")	///
 					title("Estimated Food Insecurity, SNAP Participation," "Poverty and GDP Growth Rates") ytitle("Fraction") xtitle("Year") name(PFS_SNAP_povrate, replace)	
 			
 			graph 	display PFS_SNAP_povrate, ysize(8) xsize(12.0)
 			
-			graph	export	"${SNAP_outRaw}/PFS_FI_SNAP_pov.png", as(png) replace
+			graph	export	"${SNAP_outRaw}/FigB1_PFS_FI_SNAP_unemp.png", as(png) replace
 			
 		restore
 		

@@ -1,5 +1,6 @@
 use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 	
+
 *	Construct annaul-nationawide data to generate cutoffs using different macroeconomic indicators
 
 		
@@ -8,9 +9,9 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 		local	collapse_vars	foodexp_tot_exclFS_pc	foodexp_tot_inclFS_pc	foodexp_tot_exclFS_pc_real	foodexp_tot_inclFS_pc_real	///
 								foodexp_W_TFP_pc foodexp_W_TFP_pc_real	fam_income_pc_real	fam_income_pc	///	//	Food expenditure and TFP cost per capita (nominal and real)
 								rp_age	rp_age_below30 rp_age_over65	rp_female	rp_nonWhte	rp_HS	///
-								rp_somecol	rp_col	rp_disabled	famnum	FS_rec_wth	FS_rec_amt_capita	FS_rec_amt_capita_real	part_num	///	//	Gender, race, education, FS participation rate, FS amount
+								rp_somecol	rp_col	rp_disabled	famnum	FS_rec_wth	FS_rec_amt_capita	FS_rec_amt_capita_real	/* part_num */	///	//	Gender, race, education, FS participation rate, FS amount
 								PFS_ppml_noCOLI	NME	PFS_FI_ppml_noCOLI	NME_below_1	FSSS_FI	FSSS_FI_v2	PFS_threshold_ppml_noCOLI	///	//	Outcome variables		
-								FI_pct	FSSS_FI_official	CPI		TFP_monthly_cost 	//	official FI prevalence rate (used to construct PFS threshold)
+								/*	FI_pct	FSSS_FI_official */	CPI		TFP_monthly_cost 	//	official FI prevalence rate (used to construct PFS threshold)
 		
 		*	All population
 			collapse (mean) `collapse_vars' (median)	rp_age_med=rp_age	[pw=wgt_long_ind], by(year)
@@ -40,7 +41,8 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 			lab	var	NME	"Normalized Monteray Expenditure"
 			lab	var	NME_below_1	"=1 if NME<1"
 		
-			
+		
+		
 		*	Import Census data
 		merge	1:1	year	using	"${SNAP_dtInt}/HH_census_1979_2019.dta", nogen assert(2 3) // Missing years in the PSID data will be imported
 					
@@ -55,8 +57,9 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 		merge	m:1	year	using	"${SNAP_dtInt}/PCE_real_change", nogen keep(1 3) //	Change in real PCE
 		merge	m:1	year	using	"${SNAP_dtInt}/Census_change_mean_HH_income_lowestfifth.dta", nogen keep(1 3) // Change in real mean HH income in bottom 20 percentile
 		
-		drop	part_num	//	Drop the existing participation population variable, as we need to compute SNAP participation rate over the entire study period, 
+		*	Import food security related indicators as unweighted 
 		merge	m:1	year	using	"${SNAP_dtInt}/SNAP_summary", nogen keep(1 3) keepusing(part_num) //	Change in real PCE
+		merge	1:1	year	using	"${SNAP_dtInt}/USDA_FI_prevalnce_rate_person.dta", nogen keep(1 3) keepusing(FI_pct	FSSS_FI_official) //	Change in real PCE
 		
 		*	Fraction of population in SNAP
 		**	NOTE: This is NOT the same as the official SNAP participation rate issued by the USDA
@@ -74,19 +77,18 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 			gen		dis_per_inc_pc_real	=	dis_per_inc_pc	*	(CPI/100)
 			lab	var	dis_per_inc_pc_real	""
 	
-	
-		*	Model of PFS cutoff on macroeconomic indicators
-
-			lab	var	PFS_threshold_ppml_noCOLI	"Cut-off PFS"
-			local	macrovars	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_SNAP_person	pov_rate_national	unemp_rate	GDP_pc_growth
-			
 			*	Recale variables, from 0-1 to 0-100
 			foreach	var	in	 pct_col_Census pct_rp_nonWhite_Census	pct_rp_White_Census	change_inc_mean_lowestfifth {
 				
 				replace	`var'	=	`var'	*	100
 				
 			}
-					
+			
+		*	Model of PFS cutoff on macroeconomic indicators
+
+			lab	var	PFS_threshold_ppml_noCOLI	"Cut-off PFS"
+			local	macrovars	FI_pct	PFS_threshold_ppml_noCOLI ln_dis_per_inc_pc	pct_SNAP_person	pov_rate_national	unemp_rate	GDP_pc_growth
+			
 
 			*	Summary stats
 			estpost tabstat	`macrovars',	statistics(count	mean	sd	min	  max	/*sd	min	 median	p95 max*/	) columns(statistics) 	// save
@@ -259,12 +261,12 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 				gen		PFS_cutoff_full2_e2	=	(PFS_cutoff_full2_e)^2
 				est	store	PFS_cutoff_full2
 				
-				*	(2025-6-28) SNAP rate/GDP growh rate/disposable income
+				*	(2025-6-28) SNAP rate/GDP growh rate/disposable income/unemp rate
 				cap	drop	PFS_cutoff_full3_hat
 				cap	drop	PFS_cutoff_full3_e
 				cap	drop	PFS_cutoff_full3_e2
 			
-				reg	PFS_threshold_ppml_noCOLI 	 ln_dis_per_inc_pc pct_SNAP_person	 pov_rate_national 	GDP_pc_growth 	 if	!mi(PFS_threshold_ppml_noCOLI), robust
+				reg	PFS_threshold_ppml_noCOLI 	 ln_dis_per_inc_pc pct_SNAP_person	 unemp_rate 	GDP_pc_growth 	 if	!mi(PFS_threshold_ppml_noCOLI), robust
 				predict	PFS_cutoff_full3_hat
 				predict	PFS_cutoff_full3_e, resid
 				gen		PFS_cutoff_full3_e2	=	(PFS_cutoff_full3_e)^2
@@ -300,7 +302,7 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 				collect clear
 				cap	putdocx clear    
 				putdocx begin
-				etable, estimates(PFS_cutoff_income PFS_cutoff_SNAPrate	PFS_cutoff_povrate	PFS_cutoff_unemp	PFS_cutoff_full3) ///
+				etable, estimates(PFS_cutoff_income PFS_cutoff_SNAPrate	PFS_cutoff_unemp	PFS_cutoff_GDPgrowth	PFS_cutoff_full3) ///
 					cstat(_r_b) cstat(_r_se, nformat(%7.3f)) column(index) mstat(N, nformat(%9.0g)) mstat(r2, nformat(%9.2f)) stars( 0.1 "*" 0.05 "**" 0.01 "***", attach(_r_b)) 	///
 					title("Table 2: PFS Thresholds and Macroeconomic Indicators, 1995-2019")	///
 					/*export("${SNAP_outRaw}/PFS_cutoff_on_X.docx", as(docx) replace)*/
@@ -350,8 +352,9 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 					(line PFS_threshold_ppml_noCOLI year, lpattern(solid) lc(blue) xaxis(1 2) yaxis(1) legend(label(1 "Realized")))	///
 					(line PFS_cutoff_income_hat		year, lpattern(dash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(2 "Predicted (Income)")))	///
 					(line PFS_cutoff_SNAP_hat		year, lpattern(dash_dot) lc(green) xaxis(1 2) yaxis(1)  legend(label(3 "Predicted  (SNAP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
-					(line PFS_cutoff_pov_hat		year, lpattern(shortdash) lc(yellow) xaxis(1 2) yaxis(1)  legend(label(4 "Predicted  (Poverty)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
-					(line PFS_cutoff_full3_hat		year, lpattern(dot) lcolor(black) xaxis(1 2) yaxis(1)  legend(label(5 "Predicted  (Full)") row(1) size(small) keygap(0.1) pos(6) symxsize(5))),	///
+					(line PFS_cutoff_unemp_hat		year, lpattern(shortdash) lc(orange) xaxis(1 2) yaxis(1)  legend(label(4 "Predicted  (Unemployment)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
+					(line PFS_cutoff_GDP_hat		year, lpattern(shortdash) lc(red) xaxis(1 2) yaxis(1)  legend(label(5 "Predicted  (GDP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
+					(line PFS_cutoff_full3_hat		year, lpattern(dot) lcolor(black) xaxis(1 2) yaxis(1)  legend(label(6 "Predicted  (Full)") row(2) size(small) keygap(0.1) pos(6) symxsize(5))),	///
 								/*xline(1980 1993 1999 2007, axis(1) lpattern(dot))*/ xlabel(/*1980 "No payment" 1993 "xxx" 2009 "ARRA" 2020 "COVID"*/, axis(2))	///
 								xtitle(Year)	ytitle("Probability")	///
 								title(PFS Thresholds)	bgcolor(white)	graphregion(color(white)) /*note(Source: USDA & BLS)*/	name(PFS_cutoff, replace)
