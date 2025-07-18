@@ -299,6 +299,7 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 			
 				*	Using "etable"
 				*	(2024-12-9) Formatting issue- significant stars are printed in separate columns...
+				*	(2025-7-18) Updated formatting
 				collect clear
 				cap	putdocx clear    
 				putdocx begin
@@ -307,7 +308,10 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 					title("Table 2: PFS Thresholds and Macroeconomic Indicators, 1995-2019")	///
 					/*export("${SNAP_outRaw}/PFS_cutoff_on_X.docx", as(docx) replace)*/
 				*collect layout (coleq#colname#result[_r_b _r_se] result[N r2]) (cmdset#stars) (), name(ETable)
-				collect layout (coleq#colname#result[_r_b _r_se] result[N r2]) (cmdset#stars) (), name(ETable)
+				collect layout (coleq#colname#result[_r_b _r_se] result[N r2]) (cmdset#stars) (), name(ETable)	
+				collect stars, result
+				collect query stars
+				collect preview
 				putdocx collect
 				putdocx save "${SNAP_outRaw}/PFS_cutoff_on_X.docx", replace
 					
@@ -348,21 +352,20 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 				graph	close	
 				
 				*	(2025-3-1)	Plotting new thresholds only
+				cap	drop	upper
+				gen	upper=0.7
+				
 				graph	twoway	///
-					(line PFS_threshold_ppml_noCOLI year, lpattern(solid) lc(blue) xaxis(1 2) yaxis(1) legend(label(1 "Realized")))	///
-					(line PFS_cutoff_income_hat		year, lpattern(dash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(2 "Predicted (Income)")))	///
-					(line PFS_cutoff_SNAP_hat		year, lpattern(dash_dot) lc(green) xaxis(1 2) yaxis(1)  legend(label(3 "Predicted  (SNAP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
-					(line PFS_cutoff_unemp_hat		year, lpattern(shortdash) lc(orange) xaxis(1 2) yaxis(1)  legend(label(4 "Predicted  (Unemployment)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
-					(line PFS_cutoff_GDP_hat		year, lpattern(shortdash) lc(red) xaxis(1 2) yaxis(1)  legend(label(5 "Predicted  (GDP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
-					(line PFS_cutoff_full3_hat		year, lpattern(dot) lcolor(black) xaxis(1 2) yaxis(1)  legend(label(6 "Predicted  (Full)") row(2) size(small) keygap(0.1) pos(6) symxsize(5))),	///
-								/*xline(1980 1993 1999 2007, axis(1) lpattern(dot))*/ xlabel(/*1980 "No payment" 1993 "xxx" 2009 "ARRA" 2020 "COVID"*/, axis(2))	///
-								xtitle(Year)	ytitle("Probability")	///
-								title(PFS Thresholds)	bgcolor(white)	graphregion(color(white)) /*note(Source: USDA & BLS)*/	name(PFS_cutoff, replace)
-							
-							
-												/*(line PFS_cutoff_income_hat		year, lpattern(dot) xaxis(1 2) yaxis(1) legend(label(2 "Predicted (disposable income)")))	///
-					(line PFS_cutoff_nonWhite_hat	year, lpattern(shortdash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(3 "Predicted (non-White)")))	/// */
-			
+					(bar	upper year if inlist(year, 1981, 1991, 2001, 2008, 2009), bcolor(gs14) barwidth(2)  legend(label(1 "Recession periods"))	graphregion(fcolor(white)))	///
+					(line PFS_threshold_ppml_noCOLI year, lpattern(solid) lc(blue) legend(label(2 "Realized")))	///
+					(line PFS_cutoff_income_hat		year, lpattern(dash)	lc(gray)  lwidth(medium) graphregion(fcolor(white)) legend(label(3 "Predicted (Income)")))	///
+					(line PFS_cutoff_SNAP_hat		year, lpattern(dash_dot) lc(green)  legend(label(4 "Predicted  (SNAP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
+					(line PFS_cutoff_unemp_hat		year, lpattern(shortdash) lc(orange)  legend(label(5 "Predicted  (Unemployment)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
+					(line PFS_cutoff_GDP_hat		year, lpattern(shortdash) lc(red)  legend(label(6 "Predicted  (GDP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
+					(line PFS_cutoff_full3_hat		year, lpattern(dot) lcolor(black)  legend(label(7 "Predicted  (Full)") row(2) size(small) keygap(0.1) pos(6) symxsize(5))),	///
+					xtitle(Year)	ytitle("Probability")	///
+					title(PFS Thresholds)	bgcolor(white)	graphregion(color(white)) note(Recession periods are based on NBER Business Cycle Dating)	name(PFS_cutoff, replace)
+	
 				graph	export	"${SNAP_outRaw}/PFS_thresholds_new.png", replace	
 				graph	close	
 		

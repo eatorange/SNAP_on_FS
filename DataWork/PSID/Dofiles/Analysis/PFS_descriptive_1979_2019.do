@@ -915,8 +915,8 @@
 						summ	mean_PFS	mean_PFS_FI p20_PFS	p5_PFS	//	11% FI prevalence rate
 						
 						graph	twoway	(connected	mean_PFS year)	/*(rcapsym p20_PFS p5_PFS  year) 	(rcapsym p15_PFS p10_PFS year)*/ (area p20_PFS  p5_PFS  year), bgcolor(white) graphregion(color(white))	///
-						legend(lab (1 "Mean") lab(2 "20 percentile") lab(3 "5 percentile")  rows(1) pos(6))	///
-						title(Trends and Distribution in PFS - 1979 to 2019)	name(PFS_annual_qtile, replace)	 ytitle(Probability)
+						legend(lab (1 "Mean") lab(2 "20th percentile") lab(3 "5th percentile")  rows(1) pos(6))	///
+						title(Trends and Distribution in the Probability of Food Security)	name(PFS_annual_qtile, replace)	 ytitle(Probability)
 						graph 	display PFS_annual_qtile, ysize(8) xsize(12.0)	
 						
 						graph	export	"${SNAP_outRaw}/PFS_annual_qtile.png", replace
@@ -969,18 +969,19 @@
 			 
 			
 			*	(2024-12-9)	Somehow collapsed var has precision issue. Make a double-version of the same variable for plotting
+			cap	drop	PFS_FI_ppml_noCOLI_db
 			gen	double	PFS_FI_ppml_noCOLI_db	=	PFS_FI_ppml_noCOLI
 			lab	var	PFS_FI_ppml_noCOLI_db	"Estimated to be food insecure"
 			
 			*	Figure 3	
 			twoway	(bar	upper year if inrange(year, 1988, 1991), bcolor(gs14) barwidth(2)	graphregion(fcolor(white)))	///
-					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1979,1987),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
-					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1992,2019),	lc(blue) lp(solid) lwidth(medium)  graphregion(fcolor(white))) 	 ///
-					(connected HFSM_FI	year if inlist(year,1999,2001,2003), lc(red) lp(shortdash) lwidth(medium)	msymbol(circle)	graphregion(fcolor(white)))	 ///
-					(connected HFSM_FI	year if inlist(year,2015,2017,2019), lc(red) lp(shortdash) lwidth(medium)	msymbol(circle) graphregion(fcolor(white)))		///
-					(line FI_pct		year if inrange(year,1979,2019),	lc(black) lp(dash) lwidth(medium)  graphregion(fcolor(white))), 	 ///
-					legend(order(2 "PFS" 4 "FSSS" /* 4 "USDA official (individual-level)" */) row(1) size(small) keygap(0.1) symxsize(5) pos(6)) /*yscale(range(0 0.2) titlegap(1)) ylabel(0(0.025)0.2)*/ ///
-					note("Note: PFS is missing from 1988 to 1991 due to missing data in PSID")	///
+					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1979,1987),	lc(blue) lp(dash) lwidth(medium)  graphregion(fcolor(white))) ///
+					(line PFS_FI_ppml_noCOLI_db	year if inrange(year,1992,1995),	lc(blue) lp(dash) lwidth(medium)  graphregion(fcolor(white))) 	///
+					(connected PFS_FI_ppml_noCOLI_db	year if inrange(year,1995,2019),	lc(blue) lp(solid) lwidth(medium) mcolor(black) graphregion(fcolor(white))) 	///
+					(connected HFSM_FI	year if inlist(year,1999,2001,2003), lc(red) lp(dot) lwidth(medium)	msymbol(circle)	 mcolor(blue) graphregion(fcolor(white)))	 ///
+					(connected HFSM_FI	year if inlist(year,2015,2017,2019), lc(red) lp(dot) lwidth(medium)	msymbol(circle) mcolor(blue) graphregion(fcolor(white))),	///
+					legend(order(2 "PFS (pre-1995)" 4 "PFS (post-1995)" 5 "FSSS" ) row(1) size(small) keygap(0.1) symxsize(5) pos(6)) /*yscale(range(0 0.2) titlegap(1)) ylabel(0(0.025)0.2)*/ ///
+					note("Post-1995 prevalence is anchored to the official USDA individual prevalence." "PFS is missing from 1988 to 1991 due to missing data in PSID.")	///
 					title("Food Insecurity Prevalence (1979-2019)") ytitle("Fraction") xtitle("Year") name(FI_pravelence_measures, replace)	
 			
 			graph 	display FI_pravelence_measures, ysize(8) xsize(12.0)
@@ -1187,7 +1188,22 @@
 					statistics(count	mean	sd	min	max) columns(statistics)	// save
 				est	store	PFS_FI_FSSS_FI
 				
-				
+					*	Checking Matt's suggestion; comparing FSSS raw score between (1) and (3), and (2) and (4)
+					tab	HFSM_raw		if	!mi(PFS_ppml_noCOLI)	&	PFS_FS_FSSS_FS==1	[aw=wgt_long_ind]
+					tab	HFSM_raw		if	!mi(PFS_ppml_noCOLI)	&	PFS_FS_FSSS_FI==1	[aw=wgt_long_ind]
+					tab	HFSM_raw		if	!mi(PFS_ppml_noCOLI)	&	PFS_FI_FSSS_FS==1	[aw=wgt_long_ind]
+					tab	HFSM_raw		if	!mi(PFS_ppml_noCOLI)	&	PFS_FI_FSSS_FI==1	[aw=wgt_long_ind]
+					
+					tab	PFS_FI_ppml_noCOLI		if	!mi(PFS_ppml_noCOLI)	&	inlist(HFSM_raw,1,2)	[aw=wgt_long_ind]	//	% of  FSSS-FS households that are FI or FS under PFS
+					
+					*	Comparing those with FSSS=0 (FI) and FSSS=1 or 2 (marginally FI)
+					estpost tabstat	`summvars' 	if	!mi(PFS_ppml_noCOLI)	/* &	PFS_FI_FSSS_FS==1 */	&	HFSM_raw==0	[aw=wgt_long_ind],	///
+						statistics(count	mean	sd	min	max) columns(statistics)	//	FI
+					
+					estpost tabstat	`summvars' 	if	!mi(PFS_ppml_noCOLI)	/* &	PFS_FI_FSSS_FS==1 */	&	inlist(HFSM_raw,1,2)	[aw=wgt_long_ind],	///
+						statistics(count	mean	sd	min	max) columns(statistics)	//	Marginally FI
+					
+					
 			
 			esttab	/*PFS_FSSS_full*/	PFS_FS_FSSS_FS	PFS_FS_FSSS_FI	PFS_FI_FSSS_FS	PFS_FI_FSSS_FI	using	"${SNAP_outRaw}/summstat_by_status.csv",  ///
 				cells("mean(fmt(%12.2f)) sd(fmt(%12.2f))") label	title("Summary Statistics - FS(PFS) and FI(FSSS)") noobs 	  replace
@@ -2075,7 +2091,7 @@
 				*	Figure 7	(Change in food security status by year)
 					
 					*	B&W 
-					graph bar still_FI newly_FI	status_unknown, over(year, label(angle(vertical))) stack  legend(pos(6) lab (1 "Still FI") 	lab(2 "Newly FI")	lab(3 "Previously unknown")rows(1))	///
+					graph bar still_FI newly_FI	status_unknown, over(year, label(angle(vertical))) stack  legend(pos(6) lab (1 "Still food insecure") 	lab(2 "Newly food insecure")	lab(3 "Previously unknown") rows(1))	///
 					graphregion(color(white)) bgcolor(white)  bar(1, fcolor(gs11)) bar(2, fcolor(gs6)) bar(3, fcolor(gs1))	///
 					ytitle(Fraction of Population) title(Change in Food Security Status)	ylabel(0(.025)0.15) 	name(change_status_byyear, replace)
 					
