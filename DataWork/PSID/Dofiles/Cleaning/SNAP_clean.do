@@ -65,16 +65,16 @@
 	
 	*	Codes to be executed
 		*	SECTION 1: Import individual- and family-level PSID variables
-		local	ind_agg			1	//	Aggregate individual-level variables across waves
-		local	fam_agg			1	//	Aggregate family-level variables across waves
+		local	ind_agg			0	//	Aggregate individual-level variables across waves
+		local	fam_agg			0	//	Aggregate family-level variables across waves
 		
 		*	SECTION 2: Prepare external data
-		local	ext_data		1	//	Prepare external data (CPI, TFP, etc.)
+		local	ext_data		0	//	Prepare external data (CPI, TFP, etc.)
 		
 		*	SECTION 3: Construct PSID panel data and import external data
-		local	cr_panel		1	//	Create panel structure from ID variable
+		local	cr_panel		0	//	Create panel structure from ID variable
 			local	panel_view	0	//	Create an excel file showing the change of certain clan over time (for internal data-check only)
-		local	merge_data		1	//	Merge ind- and family- variables and import it into ID variable
+		local	merge_data		0	//	Merge ind- and family- variables and import it into ID variable
 			local	raw_reshape	1		//	Merge raw variables and reshape into long data (takes time)
 			local	add_clean	1		//	Do additional cleaning and import external data (CPI, TFP)
 			local	import_dta	1		//	Import aggregated variables and external data into ID data. 
@@ -288,7 +288,6 @@
 			keep	x11101ll	`var'*
 			save	"${SNAP_dtInt}/Fam_vars/`var'", replace
 					
-			
 		*	Location
 			
 			*	State of residence
@@ -427,6 +426,23 @@
 			save	"${SNAP_dtInt}/Fam_vars/`var'", replace
 			
 		
+		*	Veteran status (RP)
+			loc	var	rp_veteran
+			psid use || `var' [68]V315 [69]V796 [70]V1487 [71]V2199 [72]V2825 [73]V3243 [74]V3665 [75]V4140 [76]V4683 [77]V5603 [78]V6152 [79]V6749 [80]V7382 [81]V8034 [82]V8658 [83]V9344 [84]V10991 [85]V11940 [86]V13567 [87]V14614 [88]V16088 [89]V17485 [90]V18816 [91]V20116 [92]V21422 [93]V23278 [94]ER3947 [95]ER6817 [96]ER9063 [97]ER11852 [99]ER15935 [01]ER19996 [03]ER23433 [05]ER27400 [07]ER40572 [09]ER46550 [11]ER51911 [13]ER57666 [15]ER64818 [17]ER70890 [19]ER76905	///
+			using "${SNAP_dtRaw}/Unpacked" , keepnotes design(any) clear		
+			
+			keep	x11101ll	`var'*
+			save	"${SNAP_dtInt}/Fam_vars/`var'", replace
+		
+		*	Veteran status (SP)
+			loc	var	sp_veteran
+			psid use || `var' [85]V12295 [86]V13502 [87]V14549 [88]V16023 [89]V17420 [90]V18751 [91]V20051 [92]V21357 [93]V23214 [94]ER3886 [95]ER6756 [96]ER9002 [97]ER11764 [99]ER15843 [01]ER19904 [03]ER23341 [05]ER27304 [07]ER40479 [09]ER46456 [11]ER51817 [13]ER57556 [15]ER64679 [17]ER70752 [19]ER76760 	///
+			using "${SNAP_dtRaw}/Unpacked" , keepnotes design(any) clear		
+			
+			keep	x11101ll	`var'*
+			save	"${SNAP_dtInt}/Fam_vars/`var'", replace
+		
+	
 		*	Food Security (HFSM)
 		
 			*	Raw score (0-18)
@@ -4007,7 +4023,29 @@
 				label	value	`var'	yes1no0
 				label	var		`var'	"non-White (ind) - only if RP or SP"
 					
-				
+		
+		*	Veteran status
+		
+			*	RP
+			loc	var	rp_veteran
+			recode	`var'	(5=0)	(9=.d)
+			lab	var	`var'	"Veteran (RP)"
+			
+			*	SP
+			loc	var	sp_veteran
+			recode	`var'	(5=0)	(9=.d) (0=.n)
+			lab	var	`var'	"Veteran (SP)"
+			
+			*	Individual (based on RP's status)
+			*	NOTE: Individual-level race is NOT avaiable in PSID. So we can only indirectly construct it, using RP
+			loc	var	ind_veteran
+			cap	drop	`var'
+			gen	`var'=.
+			replace	`var'=rp_veteran	if	seqnum==1	&	relrp_recode==1
+			replace	`var'=sp_veteran	if	seqnum==2	&	relrp_recode==2
+			lab	var	`var'	"Veteran (ind) - only if RP or SP"
+			
+			
 		
 		*	State of Residence
 		lab	val	rp_state statecode
@@ -4200,7 +4238,8 @@
 				label	var	rp_somecol	"College (w/o degree)"
 				label	var	rp_col	"College Degree"
 				*label	var	rp_NADK	"Education (NA/DK)"
-			
+	
+		
 		*	Disability
 		*	I categorize RP as disabled if RP has either "amount" OR "type" of work limitation
 		loc	var	rp_disabled
