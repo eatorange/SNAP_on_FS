@@ -148,7 +148,7 @@
 			*	I do NOT use survey structure (but still use weight)
 			*	I use Poisson quasi-MLE estimation, instead of ppml with Gamma in the original PFS paper
 			*	I include individual-FE
-				*	(2025-6-10) Individual FE may be dropped, as it makes PFS vary within HH.
+				*	(2025-6-10) Individual FE is dropped, as it makes PFS vary within HH.
 			*	Please refer to "SNAP_PFS_const_test.do" file for more detail.
 			
 			*	All sample
