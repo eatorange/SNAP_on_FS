@@ -178,7 +178,7 @@
 		
 			*	Poisson quasi-MLE
 			ppmlhdfe	`depvar'	${statevars} ${demovars}	${econvars}	${empvars}	${healthvars}	${familyvars}	${eduvars}	${foodvars}	[pweight=wgt_long_ind], ///
-				absorb(/* x11101ll */ ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
+				absorb( /* x11101ll */  ib31.rp_state ib1979.year) vce(cluster x11101ll) d	
 			est store ppml_step2
 			
 			

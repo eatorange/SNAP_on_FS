@@ -198,7 +198,7 @@
 				local	moneyvars	fam_income_month_pc_real_K	foodexp_tot_inclFS_pc_real		
 				local	SNAPvars	FS_rec_wth	FS_rec_amt_real
 				local	IVs			SNAP_index_uw	SNAP_index_w
-				local	FSvars		PFS_ppml PFS_FI_ppml	//SL_5	TFI_HCR	CFI_HCR	TFI_FIG	CFI_FIG	TFI_SFIG	CFI_SFIG	 // temporarily drop FSD
+				local	FSvars		FSSS_FI	PFS_ppml PFS_FI_ppml	//SL_5	TFI_HCR	CFI_HCR	TFI_FIG	CFI_FIG	TFI_SFIG	CFI_SFIG	 // temporarily drop FSD
 				
 				local	summvars	/*`indvars'*/	`HHvars'	`famvars'	`moneyvars' `SNAPvars' `IVs'	`FSvars'
 				
@@ -219,13 +219,20 @@
 				estpost tabstat	`summvars' 	if	!mi(PFS_ppml)	&	income_ever_below_130_9713==1	[aw=wgt_long_ind],	statistics(count	mean	sd) columns(statistics)	// save
 				est	store	sumstat_inc130_wgt
 				
-				
+					
+					*	Compare FI (PFS) and FI (FSSS) using the same sample
+					*	Very similar prevalnece rate (a bit difference in unweighted)
+					loc	FI_indicators	FSSS_FI	PFS_FI_ppml
+					estpost tabstat	`FI_indicators'	if	!mi(PFS_ppml) & !mi(FSSS_FI),	statistics(count	mean	sd) columns(statistics)			
+					estpost tabstat	`FI_indicators'	if	!mi(PFS_ppml)	& !mi(FSSS_FI)	&	income_ever_below_130_9713==1,	statistics(count	mean	sd) columns(statistics)	// save
+					estpost tabstat	`FI_indicators'	if	!mi(PFS_ppml)	& !mi(FSSS_FI)	[aw=wgt_long_ind],	statistics(count	mean	sd) columns(statistics)		// save
+					estpost tabstat	`FI_indicators' 	if	!mi(PFS_ppml)	& !mi(FSSS_FI)	&		income_ever_below_130_9713==1	[aw=wgt_long_ind],	statistics(count	mean	sd) columns(statistics)	// save
 					*	FS amount per capita in real dollars (only those used)
 					*estpost tabstat	 FS_rec_amt_capita	if in_sample==1	&	!mi(PFS_ppml)	&	income_below_200==1	& FS_rec_wth==1 [aw=wgt_long_fam_adj],	statistics(mean	sd	min	max) columns(statistics)	// save
 				
 			
 				
-				esttab	sumstat_all_nowgt	sumstat_inc130_nowgt	sumstat_all_wgt	sumstat_inc130_nowgt	using	"${SNAP_outRaw}/Tab_1_Sumstats.csv",  ///
+				esttab	sumstat_all_nowgt	sumstat_inc130_nowgt	sumstat_all_wgt	sumstat_inc130_wgt	using	"${SNAP_outRaw}/Tab_1_Sumstats.csv",  ///
 					cells("count(fmt(%12.0f)) mean(fmt(%12.2f)) sd(fmt(%12.2f))") label	title("Summary Statistics") noobs 	  replace
 									
 				esttab	sumstat_all_nowgt	sumstat_inc130_nowgt	using	"${SNAP_outRaw}/Tab_1_Sumstats.tex",  ///

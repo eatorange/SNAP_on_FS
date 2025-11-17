@@ -51,7 +51,7 @@
 	global	Zname	${IVname}_Dhat
 	
 	*	Specification for sample
-	local	income_below130=1
+	local	income_below130=0
 	
 	if	`income_below130'==1	{
 		

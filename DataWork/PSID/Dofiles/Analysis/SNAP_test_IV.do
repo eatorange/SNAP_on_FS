@@ -11,6 +11,7 @@
 
 	
 	*	Construct change variables
+	clonevar	unemp_rate	=	unemp_rate_annual
 	gen	d_unemp = unemp_rate - l.unemp_rate
 	gen d_SPI = SNAP_index_w - l.SNAP_index_w
  
