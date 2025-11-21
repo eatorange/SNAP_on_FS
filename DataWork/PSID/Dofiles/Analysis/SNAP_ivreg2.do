@@ -453,13 +453,15 @@
 				ivreghdfe	${depvar}	${RHS}	(${endovar} = ${endovar}_hat)	${reg_weight} if reg_sample==1, ///
 					/*absorb(x11101ll)*/	cluster (x11101ll)		first savefirst savefprefix(${Zname})
 				
+				*	Reduced form with SPI
+				ivreghdfe	${depvar}	${IV}	${RHS}	${reg_weight} if reg_sample==1, ///
+					/*absorb(x11101ll)*/	cluster (x11101ll)		first savefirst savefprefix(${Zname})
+				
 				*	2nd with SPI
 				ivreghdfe	${depvar}	${RHS}	(${endovar} = ${IV})	${reg_weight} if reg_sample==1, ///
 					/*absorb(x11101ll)*/	cluster (x11101ll)		first savefirst savefprefix(${Zname})
 
-				*	Reduced form
-				ivreghdfe	${depvar}	${IV}	${RHS}	${reg_weight} if reg_sample==1, ///
-					/*absorb(x11101ll)*/	cluster (x11101ll)		first savefirst savefprefix(${Zname})
+				
 					
 				/* diagnosis
 				ivreg2	${depvar}	${RHS}	(${endovar} = ${IV})	${reg_weight} if reg_sample==1, ///
