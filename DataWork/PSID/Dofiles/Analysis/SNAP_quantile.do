@@ -1,16 +1,17 @@
 *	(3) Control, time FE, no Mundlak
-		global	RHS	 ${FSD_on_FS_X}	${timevars}		${Mundlak_vars}
+*	(202511200 I use standardized weight SPI, rather than predicted SNAP
+		global	RHS	 ${FSD_on_FS_X}	${timevars}		// ${Mundlak_vars}
 		
 		
 		global	depvar		PFS_ppml	//		FIG_indiv		
 		
 				
-		ivreghdfe	${depvar}	${RHS}		(${endovar} = ${endovar}_hat)	${reg_weight} if reg_sample==1, ///
+		ivreghdfe	${depvar}	${RHS}		(${endovar} = ${IV} /* ${endovar}_hat */)	${reg_weight} if reg_sample==1, ///
 				/*absorb(x11101ll)*/	cluster (x11101ll)		first savefirst savefprefix(${Zname})
 		
 
 		cap	drop	SNAPhat
-		reg		${endovar}	${endovar}_hat	${RHS}	${reg_weight} if reg_sample==1,	cluster(x11101ll)
+		reghdfe		${endovar}	/* ${endovar}_hat */  ${IV}	${RHS}	${reg_weight} if reg_sample==1,	cluster(x11101ll) absorb(x11101ll)
 		predict	SNAPhat
 		
 		reg	${depvar}	SNAPhat	${RHS}	${reg_weight} if reg_sample==1,	cluster(x11101ll)
@@ -43,19 +44,51 @@
 			
 		
 			*	(Ben's comment) To check which group of people drives SNAP participation (thus my estimator), check the SNAP compliance rate by different groups.
-			*	I will compare three variables; (i) Realized SNAP participation (FSdummy) (ii) Non-linearly predicted SNAP status (FSdummy_hat) (iii) First-stage (SNAPhat)
+			*	I will compare three variables; (i) Realized SNAP participation (FSdummy) (ii) Non-linearly predicted SNAP status (FSdummy_hat) (iii) First-stage (SNAPhat)	
+				*	Linear probability model using SPI
+				*	Vulnerability score (V-score): predicted PFS based on covariates EXCLUDING SNAP or State policy
+				*	I will use the quantiles of V-score to estimate differential effects of SNAP policy on SNAP participation
+					*	Q. why NOT use the quantile of PFS directly?
+					*	A. Can't use outcome as quantile; as it is affected by treatment.
+				cap	drop	V_score // vulnerability score
+				reg	PFS_ppml	${RHS}	 ${reg_weight}	if reg_sample==1
+				predict	V_score, xb
 				
+				cap	drop	V_score_qtile //	PFS_qtile
+				cap	drop	V_score_qtile_q* //	PFS_qtile_q*
+				xtile V_score_qtile=V_score  ${reg_weight} if reg_sample==1, n(10)
+				tab V_score_qtile, gen(V_score_qtile_q)
+				forval i=1/9	{
+					
+					cap	drop	SPI_x_V_score_qtile`i'
+					gen			SPI_x_V_score_qtile`i'	=	SNAP_index_w_std * V_score_qtile_q`i'
+				}
+				
+				reghdfe		${endovar}	/* ${endovar}_hat */  ${IV}	SPI_x_V_score_qtile1-SPI_x_V_score_qtile9	${RHS}	${reg_weight} if reg_sample==1,	cluster(x11101ll) absorb(x11101ll)
+				est	store	SNAP_on_SPI_qtile
+				coefplot	SNAP_on_SPI_qtile
+				
+				coefplot	SNAP_on_SPI_qtile, ///
+				keep(SPI_x_V_score_qtile*)	xline(0)	 graphregion(color(white)) bgcolor(white)	///
+				legend(lab (2 "SNAP participation")	pos(6)	rows(2))	///
+				title(SNAP on SPI over V_score distribution) name(SPI_on_SNAP_over_Vqtile_LPM, replace)
+				graph display SPI_on_SNAP_over_Vqtile_LPM, ysize(4) xsize(9.0)
+				graph	export	"${SNAP_outRaw}/SPI_on_SNAP_over_Vqtile_LPM.png", as(png) replace
+			
+				
+				xtqreg	${endovar}	${IV}	${RHS}	 if reg_sample==1, id(x11101ll) quantile(0.1(0.1)0.9)
 				
 				logit	${endovar}	${IV}	${RHS}	 ${reg_weight}	if reg_sample==1, vce(cluster x11101ll) 
+				*clogit	${endovar}	${IV}	${RHS}	 if reg_sample==1, group(x11101ll) cluster(x11101ll)	
 				margins, dydx(${IV}) over(PFS_pct)
 				marginsplot, nolabel ytitle(Efects on Prob(SNAP participation)) title(Avg Marginal Effects of SPI on SNAP over PFS percentile)	///
-				note(Low-income population. From logit regression of SNAP status on SPI)	name(SPI_on_SNAP_over_PFSqtile, replace)
+				/*note(Low-income population. From logit regression of SNAP status on SPI)*/	name(SPI_on_SNAP_over_PFSqtile, replace)
 				graph display SPI_on_SNAP_over_PFSqtile, ysize(4) xsize(9.0)
 				graph	export	"${SNAP_outRaw}/SPI_on_SNAP_over_PFSqtile.png", as(png) replace
 				
 				*	Manually compute the first-stage to generate (iii)
 				cap	drop	SNAPhat
-				reg	${endovar}	${endovar}_hat		${RHS}	${reg_weight} if reg_sample==1, cluster (x11101ll)	
+				reghdfe	${endovar}	/* ${endovar}_hat */ ${IV} 	${RHS}	${reg_weight} if reg_sample==1, cluster (x11101ll)	absorb(x11101ll)
 				predict	SNAPhat
 				lab	var	SNAPhat	"Predicted SNAP status"
 				
@@ -75,21 +108,21 @@
 					lab	var	FSdummy_hat		"Non-linearly predicted SNAP (fraction) - IV"
 					lab	var	SNAPhat			"Predicted SNAP (fraction)"
 					
-					graph	twoway	(line PFS_ppml PFS_pct) (connected	FSdummy	PFS_pct) (line	SNAPhat	PFS_pct), ///
-					title(SNAP participation status by PFS quantile,) xline(20) xtitle(PFS percentile) ytitle (Percentage) ///
-					note(99\% of Food insecure individuals (PFS<0.45) are below 20th percentile) name(SNAP_over_PFSqtile, replace)
+					graph	twoway	(line PFS_ppml PFS_pct) (connected	FSdummy	PFS_pct) /*(line	SNAPhat	PFS_pct)*/, ///
+					title(SNAP participation status by PFS quantile,) /* xline(20) */ xtitle(PFS percentile) ytitle (Percentage) ///
+/*
+					note(99\% of Food insecure individuals /* (PFS<0.45) */ are below 20th percentile) */ name(SNAP_over_PFSqtile, replace)
 					graph display SNAP_over_PFSqtile, ysize(4) xsize(9.0)
-					graph	export	"${SNAP_outRaw}/SNAP_over_PFSqtile_lowinc.png", as(png) replace
+					graph	export	"${SNAP_outRaw}/SNAP_over_PFSqtile_full.png", as(png) replace
 				restore
 				
-			 
 			
 			*	Quantile regression
-			*qrprocess 	${depvar}		SNAPhat	${RHS}	${reg_weight} if reg_sample==1,	 vce(, cluster(x11101ll)) q(0.05(0.05)0.9)	// 5 percentile to 95 percentile (caution: takes time)
-			qrprocess 	${depvar}		SNAPhat	${RHS}	${reg_weight} if reg_sample==1,	 vce(, cluster(x11101ll)) q(0.05(0.05)0.2)	// 5 percentile to 20 percentile (caution: takes time)
+			qrprocess 	${depvar}		SNAPhat	${RHS} 	${reg_weight} if reg_sample==1,	 vce(, cluster(x11101ll)) q(0.1(0.1)0.3)	// 10 percentile to 90 percentile (caution: takes time)
+			*qrprocess 	${depvar}		SNAPhat	${RHS}	${reg_weight} if reg_sample==1,	 vce(, cluster(x11101ll)) q(0.05(0.05)0.2)	// 5 percentile to 20 percentile (caution: takes time)
 			est store qreg_PFS
 
-			esttab	  using "${SNAP_outRaw}/PFS_qreg.csv", ///
+			esttab	  using "${SNAP_outRaw}/PFS_qreg_lowinc.csv", ///
 			cells(b(star fmt(%8.3f)) se(fmt(2) par)) stats(N, fmt(0 2) label("N" )) ///
 			incelldelimiter() label legend nobaselevels /*nostar*/ star(* 0.10 ** 0.05 *** 0.01)	keep(q*:SNAPhat)	///
 			title(PFS on FS dummy)		replace	
@@ -97,8 +130,8 @@
 			*	Coefficient plot
 				*	Coef lable
 				global	coeflabel	//	Nul
-				forval	i=1/18		{
-					loc	j=`i'*5
+				forval	i=1/9		{
+					loc	j=`i'*10
 					
 					global	coeflabel	${coeflabel}	q`i':SNAPhat = q`j'
 					
@@ -106,7 +139,7 @@
 				di "${coeflabel}"
 			
 			//coefplot	qreg_PFS, keep(q1:SNAPhat q2:SNAPhat) vertical    noeqlabels /* nolabels */ 	coeflabels(${coeflabel}) title(SNAP effects by PFS percentile - 5 to 90 percentile)
-			coefplot	qreg_PFS, keep(q*:SNAPhat) vertical    noeqlabels /* nolabels */ 	coeflabels(${coeflabel}) title(SNAP effects by PFS percentile - 5 to 90 percentile)	///
+			coefplot	qreg_PFS, keep(q*:SNAPhat) vertical    noeqlabels /* nolabels */ 	coeflabels(${coeflabel}) title(SNAP effects by PFS percentile - 10 to 90 percentile)	///
 				bgcolor(white)	graphregion(color(white)) 	name(PFS_qtile, replace)	
 			graph display PFS_qtile, ysize(4) xsize(9.0)
 			graph	export	"${SNAP_outRaw}/PFS_qtile_lowinc.png", as(png) replace

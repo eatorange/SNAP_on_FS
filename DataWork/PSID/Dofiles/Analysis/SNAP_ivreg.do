@@ -2,6 +2,7 @@
 *	This do-file includes final analyses after testing various models
 	*	For model testing, please check "SNAP_ivreg_test.do"
 	loc	IV_reg=1
+	
 	*	IV regression
 	if	`IV_reg'==1	{
 		
