@@ -18,8 +18,10 @@
 	lab	var	d_unemp	"Change in State Unemployment Rate (ppt)"
 	lab	var	d_SPI	"Change in SPI"
 	
-	graph	twoway	(scatter d_unemp d_SPI)
+	*	Quantitative test
+	reghdfe d_SPI d_unemp, absorb(year) cluster(rp_state)
 	
+	*	Visual evidence
 	graph twoway (lfit d_unemp d_SPI, graphregion(fcolor(white)))	///
 				(scatter d_unemp d_SPI, graphregion(fcolor(white))), ytitle(Change in Unemployment Rate (ppt)) legend(off) title(Change in SPI and State Unemployment Rate)	///
 				name(change_SPI_unemp, replace)
