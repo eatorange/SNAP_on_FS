@@ -65,7 +65,7 @@
 	global	Zname	${IVname}_Dhat
 	
 	*	Specification for sample
-	local	income_below130=1
+	local	income_below130=0
 	
 	if	`income_below130'==1	{
 		
@@ -686,7 +686,7 @@
 		*	1st stage
 		esttab	 logit_SPI_biv	logit_SPI_ctrl	logit_SPI_timeFE	logit_SPI_mund logit_SPI_indFE 	SPI_w_Dhat_biv_1st 	 SPI_w_Dhat_ctrl_1st 	SPI_w_Dhat_timeFE_1st	SPI_w_Dhat_mund_1st	 SPI_w_Dhat_indFE_1st  using "${SNAP_outRaw}/PFS_1st_20251119.csv", ///
 					cells(b(star fmt(%8.3f)) se(fmt(2) par)) stats(N /* r2 */ mean_SNAP /* Controls */ YearFE Mundlak	Fstat_CD	Fstat_KP, fmt(0 2) label("N" /* "R2" */ "Mean SNAP" "Controls" "Mundlak" "F-stat(CD)" "F-stat(KP)" )) ///
-					incelldelimiter() label legend nobaselevels /*nostar*/ star(* 0.10 ** 0.05 *** 0.01)	keep(SNAP_index_w_std  ${endovar}_hat )	///
+					incelldelimiter() label legend nobaselevels /*nostar*/ star(* 0.10 ** 0.05 *** 0.01)	keep(SNAP_index_w_std /*  ${endovar}_hat */ )	///
 					title(PFS on FS dummy)		replace	
 					
 		esttab	/* logit_SPI_biv	logit_SPI_ctrl 	logit_SPI_timeFE	logit_SPI_mund */	SPI_w_Dhat_biv_1st 	/* SPI_w_Dhat_ctrl_1st */	SPI_w_Dhat_timeFE_1st	SPI_w_Dhat_mund_1st		using "${SNAP_outRaw}/PFS_1st_20251119.tex", ///
