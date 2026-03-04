@@ -366,7 +366,7 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 					xtitle(Year)	ytitle("Probability")	///
 					title(PFS Thresholds)	bgcolor(white)	graphregion(color(white)) note(Recession periods are based on NBER Business Cycle Dating)	name(PFS_cutoff, replace)
 	
-				graph	export	"${SNAP_outRaw}/PFS_thresholds_new.png", replace	
+				graph	export	"${SNAP_outRaw}/PFS_thresholds_new.tiff", replace as(tif)
 				graph	close	
 		
 		

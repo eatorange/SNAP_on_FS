@@ -68,7 +68,7 @@
            *adopath ++  "$ado/m" 
            *adopath ++  "$ado/b" 
    
-		ssc install ppmlhdfe
+		* ssc install ppmlhdfe // temporarily disbale it
    * ******************************************************************** *
    * Anything else
    * ******************************************************************** *

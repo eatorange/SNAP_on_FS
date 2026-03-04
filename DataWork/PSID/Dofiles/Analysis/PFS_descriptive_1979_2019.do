@@ -788,13 +788,15 @@
 			
 			*/
 		
+		*	(2026-2-22) Disable as it does not run (and I think it is outdated.)
 		*	Ind-year vars (observation level)
-		estpost tabstat	${summvars_obs}	[aw=wgt_long_ind],	statistics(count	mean	sd	min	median	/*p95*/	max) columns(statistics)		// save
-		est	store	sumstat_indyear
+		*estpost tabstat	${summvars_obs}	[aw=wgt_long_ind],	statistics(count	mean	sd	min	median	/*p95*/	max) columns(statistics)		// save
+		*est	store	sumstat_indyear
 
 		
-		esttab	sumstat_ind	sumstat_indyear	using	"${SNAP_outRaw}/Sumstats_desc_7919.csv",  ///
+		*esttab	sumstat_ind	sumstat_indyear	using	"${SNAP_outRaw}/Sumstats_desc_7919.csv",  ///
 				cells("count(fmt(%12.0f)) mean(fmt(%12.2f)) sd(fmt(%12.2f))") label	title("Summary Statistics") noobs 	  replace
+		
 		
 		*esttab	sumstat_ind	sumstat_indyear	using	"${SNAP_outRaw}/Sumstats_desc_7919.csv",  ///
 				main(mean %12.2f) aux(sd %12.2f keep(ind_female)) label	title("Summary Statistics") noobs 	  replace
@@ -986,7 +988,7 @@
 			
 			graph 	display FI_pravelence_measures, ysize(8) xsize(12.0)
 			
-			graph	export	"${SNAP_outRaw}/PFS_FI_rate_PFS_FSSS.png", as(png) replace
+			graph	export	"${SNAP_outRaw}/PFS_FI_rate_PFS_FSSS.tiff", as(tif) replace
 			graph	close	
 			
 			
@@ -1009,7 +1011,7 @@
 			
 			graph 	display PFS_SNAP_povrate, ysize(8) xsize(12.0)
 			
-			graph	export	"${SNAP_outRaw}/FigB1_PFS_FI_SNAP_unemp.png", as(png) replace
+			graph	export	"${SNAP_outRaw}/FigB1_PFS_FI_SNAP_unemp.png", as(tif) replace
 			
 		restore
 		
