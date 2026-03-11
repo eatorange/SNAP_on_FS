@@ -909,7 +909,7 @@
 				
 				
 			
-					*	(2025-5-10) Figure 2A - PFS plotting 5-10-15-20 percentile
+					*	(2025-5-10) Figure 1 - PFS plotting 5-10-15-20 percentile
 					preserve
 						collapse	(mean)	mean_PFS=PFS_ppml_noCOLI	mean_PFS_FI=PFS_FI_ppml_noCOLI	(p5) 	p5_PFS=PFS_ppml_noCOLI	(p10)	p10_PFS=PFS_ppml_noCOLI	///
 									(p15)	p15_PFS=PFS_ppml_noCOLI		(p20)	p20_PFS=PFS_ppml_noCOLI [aw=wgt_long_ind], by(year)
@@ -918,10 +918,10 @@
 						
 						graph	twoway	(connected	mean_PFS year)	/*(rcapsym p20_PFS p5_PFS  year) 	(rcapsym p15_PFS p10_PFS year)*/ (area p20_PFS  p5_PFS  year), bgcolor(white) graphregion(color(white))	///
 						legend(lab (1 "Mean") lab(2 "20th percentile") lab(3 "5th percentile")  rows(1) pos(6))	///
-						title(Trends and Distribution in the Probability of Food Security)	name(PFS_annual_qtile, replace)	 ytitle(Probability)
+						/*	title(Trends and Distribution in the Probability of Food Security) */	name(PFS_annual_qtile, replace)	 ytitle(Probability)
 						graph 	display PFS_annual_qtile, ysize(8) xsize(12.0)	
 						
-						graph	export	"${SNAP_outRaw}/PFS_annual_qtile.png", replace
+						graph	export	"${SNAP_outRaw}/Fig1.tif", as(tif) replace
 						graph	close
 					restore
 		
@@ -984,11 +984,11 @@
 					(connected HFSM_FI	year if inlist(year,2015,2017,2019), lc(red) lp(dot) lwidth(medium)	msymbol(circle) mcolor(blue) graphregion(fcolor(white))),	///
 					legend(order(2 "PFS (pre-1995)" 4 "PFS (post-1995)" 5 "FSSS" ) row(1) size(small) keygap(0.1) symxsize(5) pos(6)) /*yscale(range(0 0.2) titlegap(1)) ylabel(0(0.025)0.2)*/ ///
 					note("Post-1995 prevalence is anchored to the official USDA individual prevalence." "PFS is missing from 1988 to 1991 due to missing data in PSID.")	///
-					title("Food Insecurity Prevalence (1979-2019)") ytitle("Fraction") xtitle("Year") name(FI_pravelence_measures, replace)	
+					/*title("Food Insecurity Prevalence (1979-2019)")*/ ytitle("Fraction") xtitle("Year") name(FI_pravelence_measures, replace)	
 			
 			graph 	display FI_pravelence_measures, ysize(8) xsize(12.0)
 			
-			graph	export	"${SNAP_outRaw}/PFS_FI_rate_PFS_FSSS.tiff", as(tif) replace
+			graph	export	"${SNAP_outRaw}/Fig3.tiff", as(tif) replace
 			graph	close	
 			
 			
@@ -1292,11 +1292,11 @@
 				
 				graph	box	PFS_ppml_noCOLI		[aw=wgt_long_ind], over(ind_female, sort(1)) over(ind_nonWhite, sort(1))	over(ind_edu_cat, sort(1)) nooutsides ///
 					bgcolor(white)	graphregion(color(white))	legend(pos(6) row(1)) ///
-					name(outcome_subgroup_ind, replace) title(Estimated Food Security by Subgroup) note("")	///
+					name(outcome_subgroup_ind, replace) /*title(Estimated Food Security by Subgroup)*/ note("")	///
 					note("Extreme values – smaller than the lower quartile minus 1.5 times interquartile range,"  "or greater than the upper quartile plus 1.5 times interquartile range – are not plotted.")
 				
 				graph display outcome_subgroup_ind, ysize(8) xsize(12.0)
-				graph	export	"${SNAP_outRaw}/PFS_by_ind_subgroup.png", replace	
+				graph	export	"${SNAP_outRaw}/Fig4.tif", replace	as(tif)
 				graph	close
 				
 				
@@ -1560,10 +1560,10 @@
 */
 			*	Figure 5: All population
 			graph hbar spell_pct_all, over(spell_length, sort(spell_percent_w)  /*descending*/	label(labsize(vsmall))) over(ytitle, label(angle(90) labsize(small)))	///
-				bar(1, fcolor(gs03*0.5)) /*bar(2, fcolor(gs10*0.6))*/ ytitle(Fraction) graphregion(color(white)) bgcolor(white) title(Distribution of Spell Length) name(dist_spell_length, replace)
+				bar(1, fcolor(gs03*0.5)) /*bar(2, fcolor(gs10*0.6))*/ ytitle(Fraction) graphregion(color(white)) bgcolor(white) /*title(Distribution of Spell Length)*/ name(dist_spell_length, replace)
 			
 			graph display dist_spell_length, ysize(8) xsize(12.0)
-			graph	export	"${SNAP_outRaw}/Spell_length_dist.png", as(png) replace
+			graph	export	"${SNAP_outRaw}/Fig5.tif", as(tif) replace
 			graph	close
 			
 			
@@ -2090,15 +2090,15 @@
 				}
 				*/
 				
-				*	Figure 7	(Change in food security status by year)
+				*	Figure 6	(Change in food security status by year)
 					
 					*	B&W 
 					graph bar still_FI newly_FI	status_unknown, over(year, label(angle(vertical))) stack  legend(pos(6) lab (1 "Still food insecure") 	lab(2 "Newly food insecure")	lab(3 "Previously unknown") rows(1))	///
 					graphregion(color(white)) bgcolor(white)  bar(1, fcolor(gs11)) bar(2, fcolor(gs6)) bar(3, fcolor(gs1))	///
-					ytitle(Fraction of Population) title(Change in Food Security Status)	ylabel(0(.025)0.15) 	name(change_status_byyear, replace)
+					ytitle(Fraction of Population) /*title(Change in Food Security Status)*/	ylabel(0(.025)0.15) 	name(change_status_byyear, replace)
 					
 					graph display change_status_byyear, ysize(8) xsize(12.0)
-					graph	export	"${SNAP_outRaw}/change_in_status_7919.png", replace
+					graph	export	"${SNAP_outRaw}/Fig6.tif", replace as(tif)
 					graph	close
 					
 					/*

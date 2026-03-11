@@ -351,7 +351,7 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 				graph	export	"${SNAP_outRaw}/PFS_thresholds.png", replace	
 				graph	close	
 				
-				*	(2025-3-1)	Plotting new thresholds only
+				*	(2025-3-1)	Fig 2: Plotting new thresholds only
 				cap	drop	upper
 				gen	upper=0.7
 				
@@ -364,9 +364,9 @@ use "${SNAP_dtInt}/SNAP_long_PFS_cat", clear
 					(line PFS_cutoff_GDP_hat		year, lpattern(shortdash) lc(red)  legend(label(6 "Predicted  (GDP)") row(1) size(small) keygap(0.1) pos(6) symxsize(5)))	///
 					(line PFS_cutoff_full3_hat		year, lpattern(dot) lcolor(black)  legend(label(7 "Predicted  (Full)") row(2) size(small) keygap(0.1) pos(6) symxsize(5))),	///
 					xtitle(Year)	ytitle("Probability")	///
-					title(PFS Thresholds)	bgcolor(white)	graphregion(color(white)) note(Recession periods are based on NBER Business Cycle Dating)	name(PFS_cutoff, replace)
+					/*title(PFS Thresholds)*/	bgcolor(white)	graphregion(color(white)) note(Recession periods are based on NBER Business Cycle Dating)	name(PFS_cutoff, replace)
 	
-				graph	export	"${SNAP_outRaw}/PFS_thresholds_new.tiff", replace as(tif)
+				graph	export	"${SNAP_outRaw}/Fig2.tiff", replace as(tif)
 				graph	close	
 		
 		
